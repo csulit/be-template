@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+
+# Generated files (will be generated during build)
+src/generated/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+coverage/
+*.test.ts
+*.spec.ts
+vitest.config.ts
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Development files
+.eslintrc*
+.prettierrc*
+eslint.config.js
+
+# Docker files (no need to copy these into the image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Miscellaneous
+.turbo/
+.vercel/
+.cache/
+tmp/
+temp/

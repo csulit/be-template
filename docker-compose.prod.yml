@@ -1,0 +1,44 @@
+# Production override - use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+#
+# This override removes the local postgres and expects an external database.
+# Set DATABASE_URL in your environment or .env file.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      BASE_URL: ${BASE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    # Remove postgres dependency for external database
+    depends_on: []
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # Disable local postgres in production
+  postgres:
+    profiles:
+      - disabled
+
+  # Disable migrate service (run manually or via CI/CD)
+  migrate:
+    profiles:
+      - disabled

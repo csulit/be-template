@@ -1,4 +1,42 @@
 services:
+  # =============================================================================
+  # Application
+  # =============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: be-template-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_template?schema=public
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      AUTH_SECRET: ${AUTH_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # Optional services
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      - be-template-network
+
+  # =============================================================================
+  # Database
+  # =============================================================================
   postgres:
     image: postgres:16-alpine
     container_name: be-template-db
@@ -6,7 +44,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: be_template_dev
+      POSTGRES_DB: be_template
     ports:
       - "5432:5432"
     volumes:
@@ -16,6 +54,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - be-template-network
+
+  # =============================================================================
+  # Database migrations (run once)
+  # =============================================================================
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: be-template-migrate
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_template?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - be-template-network
+    profiles:
+      - migrate
 
 volumes:
   postgres_data:
+
+networks:
+  be-template-network:
+    driver: bridge
