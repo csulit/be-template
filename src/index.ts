@@ -4,7 +4,9 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { prisma } from "./db.js";
 import { env } from "./env.js";
+import { redis } from "./queue.js";
 import { startEmailListener, stopEmailListener } from "./jobs/email-listener.job.js";
+import { startWorkers, closeAllJobs } from "./jobs/index.js";
 
 const app = createApp();
 
@@ -17,7 +19,14 @@ const server = serve(
     console.log(`🚀 Server running on http://localhost:${info.port}`);
     console.log(`📚 API docs available at http://localhost:${info.port}/docs`);
 
-    // Start background jobs
+    // Start BullMQ workers
+    try {
+      await startWorkers();
+    } catch (error) {
+      console.error("Failed to start job workers:", error);
+    }
+
+    // Start IMAP email listener
     try {
       await startEmailListener();
     } catch (error) {
@@ -30,8 +39,14 @@ const server = serve(
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
 
-  // Stop background jobs
+  // Stop IMAP email listener
   await stopEmailListener();
+
+  // Close BullMQ queues and workers
+  await closeAllJobs();
+
+  // Close Redis connection
+  await redis.quit();
 
   server.close(async () => {
     await prisma.$disconnect();

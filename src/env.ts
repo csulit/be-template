@@ -33,6 +33,9 @@ const envSchema = z.object({
   // Observability (optional)
   SENTRY_DSN: z.string().optional(),
 
+  // Redis (for BullMQ job queues)
+  REDIS_URL: z.string().url().default("redis://localhost:6379"),
+
   // IMAP Configuration (optional)
   IMAP_HOST: z.string().optional(),
   IMAP_PORT: z.coerce.number().default(993),
