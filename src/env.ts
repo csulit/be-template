@@ -42,6 +42,10 @@ const envSchema = z.object({
   IMAP_USER: z.string().optional(),
   IMAP_PASS: z.string().optional(),
   IMAP_MAILBOX: z.string().default("INBOX"),
+
+  // Socket.IO Configuration
+  SOCKET_IO_ENABLED: z.coerce.boolean().default(true),
+  SOCKET_IO_PATH: z.string().default("/socket.io"),
 });
 
 export type Env = z.infer<typeof envSchema>;
