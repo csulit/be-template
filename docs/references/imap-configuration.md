@@ -17,7 +17,7 @@ If `IMAP_HOST`, `IMAP_USER`, or `IMAP_PASS` are not set, the email listener will
 ## Provider Configuration
 
 ### Gmail
-
+****
 | Setting | Value |
 |---------|-------|
 | Host | `imap.gmail.com` |
