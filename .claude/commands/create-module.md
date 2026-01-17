@@ -47,6 +47,11 @@ Module Info:
 - Class name (PascalCase): <Feature>
 - Base API path: /api/<feature>
 
+Prisma Model (if new DB entity needed):
+- Model file:  prisma/models/<feature>.prisma
+- Model name:  <Feature> (PascalCase)
+- Table name:  <features> (snake_case plural via @@map)
+
 File Paths:
 - Route:      src/modules/<feature>/<feature>.route.ts
 - Controller: src/modules/<feature>/<feature>.controller.ts
@@ -55,6 +60,11 @@ File Paths:
 - Validator:  src/modules/<feature>/<feature>.validator.ts
 - Unit Test:  tests/unit/modules/<feature>/<feature>.service.test.ts
 - Int Test:   tests/integration/routes/<feature>.test.ts
+
+Prisma Model (prisma-model-developer MUST use these exact names):
+- File path:   prisma/models/<feature>.prisma
+- Model name:  <Feature> (PascalCase)
+- Table name:  <features> (snake_case plural via @@map)
 
 Validator Exports (validator-developer MUST use these exact names):
 - Create<Feature>BodySchema    - POST request body
@@ -75,6 +85,32 @@ Service Exports (api-developer MUST use these exact names):
 Route Exports:
 - <feature>Routes              - Hono app export for registration
 ```
+
+### Step 2.5: Spawn Prisma Model Agent (Phase 0 - Conditional)
+
+**Only if the feature requires a NEW database entity.** Skip this step if:
+- The module uses existing models (e.g., User, Document)
+- The module is a utility/aggregation endpoint with no persistence
+
+Use the Task tool to spawn the `prisma-model-developer` agent:
+
+| Agent | Purpose |
+|-------|---------|
+| prisma-model-developer | Creates Prisma model file in `prisma/models/` |
+
+**Include in the agent's prompt:**
+1. The Prisma model section from the naming contract
+2. The feature requirements (what fields/relations are needed)
+3. Any relation context (which existing models it relates to)
+
+**Wait for Phase 0 to complete** before proceeding. The Prisma model must exist before Phase 1 agents can reference it in DTOs.
+
+After the agent completes, run:
+```bash
+pnpm db:generate
+```
+
+This regenerates the Prisma client so Phase 1/2 agents can use the new model types.
 
 ### Step 3: Spawn Schema Agents + File Explorer (Phase 1)
 
@@ -166,6 +202,7 @@ After completion, provide a summary:
 - Base path: `/api/<feature>`
 
 ### Files Created/Modified:
+- [ ] prisma/models/<feature>.prisma (if new DB entity)
 - [ ] src/modules/<feature>/<feature>.route.ts
 - [ ] src/modules/<feature>/<feature>.controller.ts
 - [ ] src/modules/<feature>/<feature>.service.ts
@@ -175,22 +212,23 @@ After completion, provide a summary:
 - [ ] tests/integration/routes/<feature>.test.ts
 
 ### Phase Execution:
+- Phase 0 (Prisma Model): prisma-model-developer ✅/⏭️ (skipped if using existing models)
 - Phase 1 (Schemas + Context): dto-developer ✅, validator-developer ✅, file-explorer ✅
 - Phase 2 (Implementation): api-developer ✅, test-developer ✅
 - Code Review: ✅
 
 ### Verification:
+- Prisma Generate: ✅/❌ (if Phase 0 ran)
 - TypeScript: ✅/❌
 - Lint: ✅/❌
 - Tests: ✅/❌
 
 ### Next Steps:
 - Register routes in app.ts (if new module)
-- Update Prisma schema if new models needed
-- Run `pnpm db:generate` after schema changes
+- Run `pnpm db:migrate` to apply schema changes (if new model created)
 ```
 
-## Why Two Phases?
+## Why Three Phases?
 
 Each subagent runs in its **own isolated context window**. They receive only:
 - Their agent markdown (system prompt)
@@ -202,11 +240,13 @@ They do **NOT** inherit:
 - Knowledge of what sibling agents are creating
 - Existing file contents (unless they read them)
 
-By splitting into two phases:
-1. **Phase 1** creates schemas (DTOs + Validators) with contracted names, while file-explorer gathers existing patterns in parallel
-2. **Phase 2** can import real schemas because the files now exist, AND receives pre-gathered context from file-explorer
+By splitting into three phases:
+1. **Phase 0** creates the Prisma model (if needed), then runs `pnpm db:generate` to make types available
+2. **Phase 1** creates schemas (DTOs + Validators) with contracted names, while file-explorer gathers existing patterns in parallel
+3. **Phase 2** can import real schemas and use Prisma types because Phase 0/1 files now exist
 
 This eliminates:
+- Prisma type errors (model types exist before services reference them)
 - Import mismatches and naming conflicts between parallel agents
 - Redundant file exploration by Phase 2 agents (file-explorer does it once)
 - Context window waste from each agent re-reading the same patterns

@@ -2,131 +2,150 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Critical Guidelines
+
+**Verify before assuming.** Always read existing code, configuration files, and documentation before making changes. When unsure about patterns, APIs, or configurations:
+1. Search the codebase for existing examples
+2. Read the relevant source files
+3. Check official documentation if needed
+
+Never generate code based on assumptions about how libraries work. If you don't know the exact API, research it first.
+
 ## Commands
 
 ```bash
 # Development
-pnpm dev              # Start dev server with hot reload (tsx watch)
-pnpm build            # TypeScript compilation to dist/
-pnpm start            # Run compiled code from dist/
+pnpm dev              # Start dev server with hot reload
+pnpm build            # Compile TypeScript
+pnpm typecheck        # Type check without emitting
 
-# Database (Prisma with PostgreSQL)
+# Database (PostgreSQL via Docker)
 pnpm db:generate      # Generate Prisma client after schema changes
-pnpm db:migrate       # Create and apply migrations
-pnpm db:push          # Push schema changes without migration (dev only)
+pnpm db:migrate       # Create and run migrations
+pnpm db:push          # Push schema changes (no migration file)
 pnpm db:studio        # Open Prisma Studio GUI
 
 # Testing
-pnpm test             # Run vitest in watch mode
-pnpm test:run         # Run tests once
-vitest run tests/integration/routes/health.test.ts  # Run single test file
+pnpm test             # Run tests in watch mode
+pnpm test:run         # Run tests once (CI)
+vitest run tests/integration/routes/health.test.ts  # Single file
+vitest run --grep "FeatureService"                  # Pattern match
 
 # Code Quality
-pnpm typecheck        # Type check without emitting
 pnpm lint             # ESLint check
 pnpm lint:fix         # ESLint with auto-fix
 pnpm format           # Prettier format
+pnpm format:check     # Check formatting
 ```
 
 ## Architecture
 
 ### Stack
+- **Hono** with zod-openapi for type-safe routes and auto-generated OpenAPI docs
+- **Prisma** with PostgreSQL (pg adapter)
+- **better-auth** for session-based authentication
+- **Zod** for all validation (request/response schemas)
+- **Vitest** for testing with hono/testing client
 
-- **Framework**: Hono with OpenAPI (zod-openapi) running on Node.js
-- **Auth**: better-auth with Prisma adapter (email/password + optional Google OAuth)
-- **Database**: PostgreSQL via Prisma ORM with `@prisma/adapter-pg`
-- **Validation**: Zod v4 (schemas double as OpenAPI definitions)
+### Module Structure
 
-### Project Structure
-
+Each feature lives in `src/modules/<feature>/`:
 ```
-src/
-├── index.ts           # Server entry point with graceful shutdown
-├── app.ts             # Hono app factory with middleware stack
-├── db.ts              # Prisma client singleton
-├── env.ts             # Zod-validated environment variables
-├── lib/
-│   ├── auth.ts        # better-auth configuration
-│   ├── openapi.ts     # Swagger UI setup
-│   └── errors.ts      # AppError class and factory functions
-├── middleware/
-│   ├── auth.middleware.ts    # Session validation + roleGuard()
-│   ├── error.middleware.ts   # Global error handler (Zod, AppError, HTTPException)
-│   └── rate-limit.middleware.ts
-├── modules/           # Feature modules (route → controller → service pattern)
-│   └── {module}/
-│       ├── {module}.route.ts       # OpenAPI route definitions
-│       ├── {module}.controller.ts  # Request handlers
-│       ├── {module}.service.ts     # Business logic
-│       ├── {module}.dto.ts         # Response schemas
-│       └── {module}.validator.ts   # Request body/query schemas
-├── shared/
-│   ├── dtos/          # Reusable response schemas (pagination, errors)
-│   ├── validators/    # Reusable request validators
-│   └── utils/         # Helper functions
-├── providers/         # External service wrappers (email, SMS, storage)
-└── generated/prisma/  # Auto-generated Prisma client (don't edit)
-
-prisma/
-├── schema.prisma      # Database schema
-└── prisma.config.ts   # Prisma config with pg adapter
+<feature>.route.ts       # OpenAPI route definitions with createRoute()
+<feature>.controller.ts  # Thin handlers that call services
+<feature>.service.ts     # Business logic with Prisma operations
+<feature>.dto.ts         # Response Zod schemas with .openapi() metadata
+<feature>.validator.ts   # Request body/params/query Zod schemas
 ```
 
 ### Key Patterns
 
-**Adding a new module:**
-
-1. Create folder in `src/modules/{name}/`
-2. Define Zod schemas in `validator.ts` (request) and `dto.ts` (response)
-3. Create routes using `createRoute()` from `@hono/zod-openapi` in `route.ts`
-4. Implement handlers in `controller.ts` with type `RouteHandler<RouteType>`
-5. Put business logic in `service.ts` as a class instance export
-6. Register routes in `app.ts`: `app.route("/api/{name}", routes)`
-
-**Route definition pattern:**
-
+**Routes use createRoute() with full OpenAPI metadata:**
 ```typescript
-const myRoute = createRoute({
-  method: "get",
+const route = createRoute({
+  method: "post",
   path: "/",
-  tags: ["Tag"],
+  tags: ["Feature"],
   middleware: [authMiddleware] as const,
-  request: { body: { content: { "application/json": { schema: MySchema } } } },
-  responses: { 200: { content: { "application/json": { schema: ResponseSchema } } } },
+  request: { body: { content: { "application/json": { schema: BodySchema } } } },
+  responses: { 201: { content: { "application/json": { schema: ResponseSchema } } } },
 });
-app.openapi(myRoute, handler);
+app.openapi(route, controller.handler);
 ```
 
-**Auth middleware types:**
-
-- `AuthEnv` - Provides `c.get("user")` and `c.get("session")` after `authMiddleware`
-- `roleGuard("admin", "manager")` - Role-based access control
-
-**Error handling:**
-
-- Use factory functions from `lib/errors.ts`: `NotFound()`, `BadRequest()`, `Unauthorized()`, `Forbidden()`, `Conflict()`
-- All errors flow through `errorHandler` in `error.middleware.ts`
-
-**Environment variables:**
-
-- Defined and validated in `src/env.ts` using Zod
-- Required: `DATABASE_URL`, `BASE_URL`, `AUTH_SECRET` (min 32 chars)
-- Optional: `GOOGLE_CLIENT_ID/SECRET`, `SENTRY_DSN`, AWS/Twilio configs
-
-### Testing
-
-Tests use Vitest with `hono/testing` client:
-
+**Controllers are thin, type-safe handlers:**
 ```typescript
-import { createTestClient } from "../../helpers/test-client.js";
-const client = createTestClient();
-const res = await client.health.$get();
+export const handler: RouteHandler<typeof route> = async (c) => {
+  const body = c.req.valid("json");
+  const user = c.get("user");
+  const result = await service.create(body, user.id);
+  return c.json(toDto(result), 201);
+};
 ```
 
-Test structure mirrors source: `tests/unit/` and `tests/integration/`
+**Services accept optional transaction client:**
+```typescript
+async create(data: CreateData, tx: Prisma.TransactionClient = prisma) {
+  return await tx.feature.create({ data });
+}
+```
 
-### ESLint Rules
+**DTOs transform database models to API responses:**
+```typescript
+export const FeatureSchema = z.object({
+  id: z.string().uuid().openapi({ example: "..." }),
+  createdAt: z.string().datetime(),
+}).openapi({ ref: "Feature" });
 
-- Prefer type imports: `import type { Foo }` or `import { type Foo }`
-- Unused vars allowed if prefixed with `_`
-- `no-explicit-any` is warning (not error)
+export function toFeatureDto(model: Feature): z.infer<typeof FeatureSchema> {
+  return { id: model.id, createdAt: model.createdAt.toISOString() };
+}
+```
+
+### Error Handling
+
+Use error factories from `src/lib/errors.ts`:
+```typescript
+import { NotFound, BadRequest, Forbidden, Conflict } from "@/lib/errors";
+
+if (!item) throw NotFound("Item not found");
+if (item.userId !== userId) throw Forbidden("Not authorized");
+```
+
+### Authentication
+
+Protected routes use `authMiddleware`, role-based access uses `roleGuard`:
+```typescript
+middleware: [authMiddleware] as const,  // Requires session
+middleware: [authMiddleware, roleGuard("admin")] as const,  // Requires admin role
+```
+
+In controllers: `c.get("user")` and `c.get("session")` are available after authMiddleware.
+
+### Imports
+
+Use path alias `@/` for src directory:
+```typescript
+import { prisma } from "@/db";
+import { NotFound } from "@/lib/errors";
+import type { Prisma } from "@/generated/prisma";
+```
+
+## Database
+
+- Prisma schema: `prisma/schema.prisma`
+- Generated client: `src/generated/prisma/`
+- Always run `pnpm db:generate` after schema changes
+- Use transactions via `prisma.$transaction()` for multi-step operations
+
+## Testing
+
+- Integration tests: `tests/integration/routes/` - use `createTestClient()` from `tests/helpers/test-client.ts`
+- Unit tests: `tests/unit/` - mock Prisma with `vi.mock("@/db")`
+- Setup file: `tests/setup.ts`
+
+## OpenAPI
+
+- Schema at `/openapi.json`
+- Swagger UI at `/docs` (development only)
+- All schemas need `.openapi({ ref: "Name" })` for proper documentation

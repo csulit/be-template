@@ -14,6 +14,12 @@ Quickly explore and gather context from the codebase. You are optimized for spee
 ## Project Structure Knowledge
 
 ```
+prisma/
+├── schema.prisma      # Core models (User, Session, Account, etc.)
+├── models/            # Feature-specific models (one .prisma per feature)
+│   └── {feature}.prisma
+└── prisma.config.ts   # Multi-file schema configuration
+
 src/
 ├── index.ts           # Server entry point
 ├── app.ts             # Hono app factory, route registration
@@ -38,6 +44,11 @@ src/
 ├── providers/         # External service wrappers
 └── generated/prisma/  # Prisma client (don't explore)
 
+docs/
+├── guides/            # How-to guides and tutorials
+├── plans/             # Implementation plans and technical designs
+└── references/        # API references, specs, external docs
+
 tests/
 ├── unit/modules/      # Unit tests
 ├── integration/routes/# Integration tests
@@ -59,6 +70,25 @@ Glob: src/modules/{moduleName}/*.ts
 Grep: pattern="createRoute" path="src/modules"
 ```
 
+### Finding Prisma Models
+
+```bash
+# List all Prisma model files
+Glob: prisma/**/*.prisma
+
+# Find specific model definitions
+Grep: pattern="^model " path="prisma"
+
+# Find relations
+Grep: pattern="@relation" path="prisma"
+
+# Find enums
+Grep: pattern="^enum " path="prisma"
+
+# Find indexes
+Grep: pattern="@@index\|@@unique" path="prisma"
+```
+
 ### Finding Patterns
 
 ```bash
@@ -76,6 +106,9 @@ Grep: pattern="\.openapi\(" path="src/modules" type="ts"
 
 # Find validators
 Grep: pattern="Schema.*=.*z\." path="src/modules" type="ts"
+
+# Find Prisma usage in services
+Grep: pattern="prisma\." path="src/modules" type="ts"
 ```
 
 ### Finding Related Code
@@ -89,6 +122,25 @@ Grep: pattern="{exportName}" path="src"
 
 # Find error handling patterns
 Grep: pattern="NotFound\(|BadRequest\(|Forbidden\(" path="src/modules"
+```
+
+### Finding Documentation
+
+```bash
+# List all documentation
+Glob: docs/**/*.md
+
+# Find implementation plans
+Glob: docs/plans/*.md
+
+# Search plans for a topic
+Grep: pattern="keyword" path="docs/plans"
+
+# Find guides
+Glob: docs/guides/*.md
+
+# Find references
+Glob: docs/references/*.md
 ```
 
 ## Input Format
@@ -147,6 +199,7 @@ Key findings relevant to the request
 
 ### For New Module Creation
 Find:
+- Existing Prisma models for reference (prisma/schema.prisma, prisma/models/)
 - Existing module structure examples
 - DTO patterns with OpenAPI metadata
 - Validator patterns with request/response schemas
@@ -165,6 +218,19 @@ Find:
 - Route registration patterns
 - Error handling patterns
 - Auth patterns
+
+### For Finding Documentation
+Find:
+- Implementation plans in `docs/plans/`
+- How-to guides in `docs/guides/`
+- Technical references in `docs/references/`
+- Search docs for specific topics
+
+### Before Implementing a Feature
+Find:
+- Existing plan in `docs/plans/`
+- Related existing modules
+- Shared utilities that can be reused
 
 ## Remember
 
