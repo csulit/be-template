@@ -1,6 +1,6 @@
 # Create Module Command
 
-Orchestrates module creation by running specialized agents in two phases for optimal coordination.
+Orchestrates module creation by running specialized agents in phases for optimal coordination.
 
 ## Arguments
 
@@ -76,25 +76,42 @@ Route Exports:
 - <feature>Routes              - Hono app export for registration
 ```
 
-### Step 3: Spawn Schema Agents (Phase 1)
+### Step 3: Spawn Schema Agents + File Explorer (Phase 1)
 
-Use the Task tool to spawn **2 schema agents in parallel** in a SINGLE message:
+Use the Task tool to spawn **3 agents in parallel** in a SINGLE message:
 
 | Agent | Purpose |
 |-------|---------|
 | dto-developer | Creates response DTOs and transformation functions |
 | validator-developer | Creates request body, params, and query validators |
+| file-explorer | Gathers existing patterns, examples, and context for Phase 2 |
 
-**Include in each agent's prompt:**
+**Include in schema agents' prompts:**
 1. The full naming contract from Step 2
 2. The parsed feature requirements
 3. The module context (new or existing)
 
+**Include in file-explorer's prompt:**
+```
+Gather context for Phase 2 implementation agents. Find:
+
+1. **Existing module examples** - Read 1-2 complete module implementations to use as reference
+2. **Route patterns** - How routes are defined with createRoute() and OpenAPI
+3. **Controller patterns** - How handlers use RouteHandler<> typing
+4. **Service patterns** - How services use Prisma, transactions, and error factories
+5. **Test patterns** - How unit and integration tests are structured
+
+Focus on finding the BEST examples, not all examples. Keep output concise.
+Return a structured context document that Phase 2 agents can use.
+```
+
 ### Step 4: Wait for Phase 1
 
-Use TaskOutput to wait for BOTH schema agents to complete.
+Use TaskOutput to wait for ALL THREE agents to complete.
 
-**Why wait?** Subagents have isolated context windows. The api-developer and test-developer need the actual schema files to exist so they can import real exports instead of guessing names.
+**Why wait?** Subagents have isolated context windows. The api-developer and test-developer need:
+- The actual schema files to exist (from dto-developer and validator-developer)
+- Existing pattern context (from file-explorer)
 
 ### Step 5: Spawn Implementation Agents (Phase 2)
 
@@ -110,6 +127,7 @@ After Phase 1 completes, spawn **2 implementation agents in parallel** in a SING
 2. Confirmation that schema files now exist with the contracted exports
 3. The parsed feature requirements
 4. The module context (new or existing)
+5. **The context document from file-explorer** (paste the relevant patterns found)
 
 ### Step 6: Wait for Phase 2
 
@@ -157,7 +175,7 @@ After completion, provide a summary:
 - [ ] tests/integration/routes/<feature>.test.ts
 
 ### Phase Execution:
-- Phase 1 (Schemas): dto-developer ✅, validator-developer ✅
+- Phase 1 (Schemas + Context): dto-developer ✅, validator-developer ✅, file-explorer ✅
 - Phase 2 (Implementation): api-developer ✅, test-developer ✅
 - Code Review: ✅
 
@@ -185,7 +203,19 @@ They do **NOT** inherit:
 - Existing file contents (unless they read them)
 
 By splitting into two phases:
-1. **Phase 1** creates schemas (DTOs + Validators) with contracted names
-2. **Phase 2** can import real schemas because the files now exist
+1. **Phase 1** creates schemas (DTOs + Validators) with contracted names, while file-explorer gathers existing patterns in parallel
+2. **Phase 2** can import real schemas because the files now exist, AND receives pre-gathered context from file-explorer
 
-This eliminates import mismatches and naming conflicts between parallel agents.
+This eliminates:
+- Import mismatches and naming conflicts between parallel agents
+- Redundant file exploration by Phase 2 agents (file-explorer does it once)
+- Context window waste from each agent re-reading the same patterns
+
+## File Explorer Optimization
+
+The `file-explorer` agent runs on `haiku` (lightweight, fast model) and gathers context that would otherwise be duplicated by api-developer and test-developer. Benefits:
+
+- **Parallel execution** - Runs alongside schema creation, no extra wait time
+- **Shared context** - Phase 2 agents receive pre-gathered patterns instead of each exploring independently
+- **Reduced cost** - Uses cheaper model for read-only exploration
+- **Faster Phase 2** - Implementation agents can start coding immediately with examples in hand
