@@ -29,6 +29,7 @@ export class ImapProvider extends EventEmitter {
   private config: ImapConfig;
   private isConnected = false;
   private isListening = false;
+  private mailboxLock: { release: () => void } | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
@@ -60,6 +61,7 @@ export class ImapProvider extends EventEmitter {
       this.client.on("close", () => {
         this.isConnected = false;
         this.isListening = false;
+        this.mailboxLock = null; // Lock is invalid after disconnect
         this.emit("disconnected");
 
         if (this.shouldReconnect) {
@@ -120,7 +122,7 @@ export class ImapProvider extends EventEmitter {
     }
 
     this.config.mailbox = mailbox;
-    const lock = await this.client.getMailboxLock(mailbox);
+    this.mailboxLock = await this.client.getMailboxLock(mailbox);
 
     try {
       this.isListening = true;
@@ -138,13 +140,10 @@ export class ImapProvider extends EventEmitter {
       console.log(`IMAP: Listening for new emails in ${mailbox}`);
     } catch (error) {
       this.isListening = false;
-      lock.release();
+      this.mailboxLock?.release();
+      this.mailboxLock = null;
       throw error;
     }
-
-    // Note: We don't release the lock here because we want to keep
-    // the mailbox open for listening. The lock will be released
-    // when we disconnect.
   }
 
   private async fetchLatestEmail(seq: number): Promise<void> {
@@ -265,6 +264,12 @@ export class ImapProvider extends EventEmitter {
   async disconnect(): Promise<void> {
     this.shouldReconnect = false;
     this.isListening = false;
+
+    // Release mailbox lock if held
+    if (this.mailboxLock) {
+      this.mailboxLock.release();
+      this.mailboxLock = null;
+    }
 
     if (this.client && this.isConnected) {
       try {
