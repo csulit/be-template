@@ -45,10 +45,9 @@ const shutdown = async (signal: string) => {
   // Close BullMQ queues and workers
   await closeAllJobs();
 
-  // Close Redis connection
-  await redis.quit();
-
   server.close(async () => {
+    // Close Redis connection after server closes
+    await redis.quit();
     await prisma.$disconnect();
     console.log("✅ Server closed");
     process.exit(0);
