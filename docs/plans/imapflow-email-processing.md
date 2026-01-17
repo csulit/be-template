@@ -516,24 +516,30 @@ process.on('SIGTERM', async () => {
 
 ## Testing
 
-```typescript
-// tests/unit/providers/imap.provider.test.ts
-import { describe, it, expect, vi } from 'vitest';
-import { ImapProvider } from '../../../src/providers/email/imap.provider.js';
+Tests are implemented in:
+- `tests/unit/providers/email/imap.provider.test.ts` - ImapProvider unit tests (27 tests)
+- `tests/unit/modules/incoming-email/incoming-email.service.test.ts` - Service unit tests (26 tests)
+- `tests/integration/routes/incoming-email.test.ts` - Route integration tests (17 tests)
 
-describe('ImapProvider', () => {
-  it('should parse email correctly', async () => {
-    // Mock ImapFlow and test parsing logic
-  });
+### ImapProvider Test Coverage
 
-  it('should emit email event on new message', async () => {
-    // Test event emission
-  });
+| Category | Tests |
+|----------|-------|
+| Constructor | Instance creation, initial status |
+| connect() | Successful connection, duplicate prevention, error forwarding, event handlers |
+| startListening() | Error when disconnected, mailbox lock, default INBOX, exists event |
+| fetchLatestEmail() | Email emission, count validation, error handling |
+| parseEmail() | Generated messageId, missing from, array addresses, optional fields, metadata |
+| disconnect() | Lock release, logout, graceful error handling |
+| getConnectionStatus() | Disconnected/connected/listening states |
+| Event emission | Disconnected on close, error forwarding |
 
-  it('should reconnect on disconnect', async () => {
-    // Test reconnection logic
-  });
-});
+```bash
+# Run all tests
+pnpm test:run
+
+# Run IMAP provider tests only
+pnpm test:run tests/unit/providers/email/imap.provider.test.ts
 ```
 
 ## Security Considerations
