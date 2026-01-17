@@ -32,6 +32,13 @@ const envSchema = z.object({
 
   // Observability (optional)
   SENTRY_DSN: z.string().optional(),
+
+  // IMAP Configuration (optional)
+  IMAP_HOST: z.string().optional(),
+  IMAP_PORT: z.coerce.number().default(993),
+  IMAP_USER: z.string().optional(),
+  IMAP_PASS: z.string().optional(),
+  IMAP_MAILBOX: z.string().default("INBOX"),
 });
 
 export type Env = z.infer<typeof envSchema>;

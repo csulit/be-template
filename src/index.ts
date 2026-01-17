@@ -4,6 +4,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { prisma } from "./db.js";
 import { env } from "./env.js";
+import { startEmailListener, stopEmailListener } from "./jobs/email-listener.job.js";
 
 const app = createApp();
 
@@ -12,15 +13,25 @@ const server = serve(
     fetch: app.fetch,
     port: env.PORT,
   },
-  (info) => {
+  async (info) => {
     console.log(`🚀 Server running on http://localhost:${info.port}`);
     console.log(`📚 API docs available at http://localhost:${info.port}/docs`);
+
+    // Start background jobs
+    try {
+      await startEmailListener();
+    } catch (error) {
+      console.error("Failed to start email listener:", error);
+    }
   }
 );
 
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
+
+  // Stop background jobs
+  await stopEmailListener();
 
   server.close(async () => {
     await prisma.$disconnect();

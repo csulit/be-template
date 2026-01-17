@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["prismaSchemaFolder"]
 }
 
 datasource db {
@@ -85,6 +86,17 @@ model Verification {
 }
 
 // ============================================================================
+// Incoming Email Enums
+// ============================================================================
+
+enum IncomingEmailStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+// ============================================================================
 // Application Models
 // ============================================================================
 
@@ -104,4 +116,47 @@ model Document {
   @@index([userId])
   @@index([type])
   @@map("documents")
+}
+
+// ============================================================================
+// Incoming Email Models
+// ============================================================================
+
+model IncomingEmail {
+  id          String              @id @default(cuid())
+  messageId   String              @unique
+  from        String
+  to          String[]
+  cc          String[]
+  subject     String?
+  textBody    String?
+  htmlBody    String?
+  receivedAt  DateTime
+  processedAt DateTime?
+  status      IncomingEmailStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  attachments EmailAttachment[]
+
+  @@index([status])
+  @@index([from])
+  @@index([receivedAt])
+  @@map("incoming_emails")
+}
+
+model EmailAttachment {
+  id              String   @id @default(cuid())
+  filename        String
+  contentType     String
+  size            Int
+  storagePath     String?
+  createdAt       DateTime @default(now())
+
+  incomingEmailId String
+  incomingEmail   IncomingEmail @relation(fields: [incomingEmailId], references: [id], onDelete: Cascade)
+
+  @@index([incomingEmailId])
+  @@map("email_attachments")
 }

@@ -11,6 +11,7 @@ import { errorHandler } from "./middleware/error.middleware.js";
 import { rateLimiter } from "./middleware/rate-limit.middleware.js";
 import { usersRoutes } from "./modules/users/users.route.js";
 import { documentsRoutes } from "./modules/documents/documents.route.js";
+import { incomingEmailRoutes } from "./modules/incoming-email/incoming-email.route.js";
 
 export type AppEnv = {
   Variables: {
@@ -57,6 +58,7 @@ export function createApp() {
   // API routes
   app.route("/api/users", usersRoutes);
   app.route("/api/documents", documentsRoutes);
+  app.route("/api/incoming-emails", incomingEmailRoutes);
 
   // OpenAPI documentation
   setupOpenAPI(app);
