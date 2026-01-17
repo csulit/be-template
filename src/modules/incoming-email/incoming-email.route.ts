@@ -18,7 +18,7 @@ const app = new OpenAPIHono<AuthEnv>();
 const listIncomingEmailsRoute = createRoute({
   method: "get",
   path: "/",
-  tags: ["IncomingEmail"],
+  tags: ["Incoming Email"],
   summary: "List incoming emails",
   description:
     "Returns a paginated list of incoming emails with optional filters by status and sender",
@@ -50,7 +50,7 @@ const listIncomingEmailsRoute = createRoute({
 const getIncomingEmailRoute = createRoute({
   method: "get",
   path: "/{id}",
-  tags: ["IncomingEmail"],
+  tags: ["Incoming Email"],
   summary: "Get incoming email by ID",
   description: "Returns a single incoming email by its ID, including all attachments",
   middleware: [authMiddleware] as const,
@@ -89,7 +89,7 @@ const getIncomingEmailRoute = createRoute({
 const updateIncomingEmailRoute = createRoute({
   method: "patch",
   path: "/{id}",
-  tags: ["IncomingEmail"],
+  tags: ["Incoming Email"],
   summary: "Update incoming email",
   description: "Updates an incoming email's status and/or metadata",
   middleware: [authMiddleware] as const,
