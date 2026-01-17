@@ -38,6 +38,11 @@ src/
 ├── providers/         # External service wrappers
 └── generated/prisma/  # Prisma client (don't explore)
 
+docs/
+├── guides/            # How-to guides and tutorials
+├── plans/             # Implementation plans and technical designs
+└── references/        # API references, specs, external docs
+
 tests/
 ├── unit/modules/      # Unit tests
 ├── integration/routes/# Integration tests
@@ -89,6 +94,25 @@ Grep: pattern="{exportName}" path="src"
 
 # Find error handling patterns
 Grep: pattern="NotFound\(|BadRequest\(|Forbidden\(" path="src/modules"
+```
+
+### Finding Documentation
+
+```bash
+# List all documentation
+Glob: docs/**/*.md
+
+# Find implementation plans
+Glob: docs/plans/*.md
+
+# Search plans for a topic
+Grep: pattern="keyword" path="docs/plans"
+
+# Find guides
+Glob: docs/guides/*.md
+
+# Find references
+Glob: docs/references/*.md
 ```
 
 ## Input Format
@@ -165,6 +189,19 @@ Find:
 - Route registration patterns
 - Error handling patterns
 - Auth patterns
+
+### For Finding Documentation
+Find:
+- Implementation plans in `docs/plans/`
+- How-to guides in `docs/guides/`
+- Technical references in `docs/references/`
+- Search docs for specific topics
+
+### Before Implementing a Feature
+Find:
+- Existing plan in `docs/plans/`
+- Related existing modules
+- Shared utilities that can be reused
 
 ## Remember
 
