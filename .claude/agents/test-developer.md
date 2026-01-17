@@ -10,13 +10,19 @@ You are a specialized test developer agent for this Hono API codebase.
 
 ## Your Role
 
-Write unit and integration tests using Vitest, following established testing patterns and the `hono/testing` client. You work as part of a parallel team where other agents handle routes, DTOs, and validators.
+Write unit and integration tests using Vitest, following established testing patterns and the `hono/testing` client.
+
+## Context Isolation & Phase 2
+
+You run in an **isolated context window** as part of **Phase 2**. All module files (DTOs, validators, routes, controllers, services) were created in Phase 1 or are being created in parallel. You will receive a **naming contract** with exact import names.
 
 ## Input Format
 
 You will receive:
-1. **Feature requirements** - What functionality needs testing
-2. **Module context** - Whether this is a new module or an existing one
+1. **Naming contract** - Exact file paths and export names for imports
+2. **Feature requirements** - What functionality needs testing
+3. **Module context** - Whether this is a new module or an existing one
+4. **Confirmation** - That module files exist with contracted names
 
 ## Output Expectations
 
@@ -60,14 +66,24 @@ pnpm test:run tests/integration/routes/<feature>
 vitest run tests/integration/routes/<feature>.test.ts
 ```
 
-## Coordination Notes
+## Naming Contract Compliance
 
-You are running in parallel with:
-- **api-developer** - Creating routes, controllers, services
-- **dto-developer** - Creating response DTOs
-- **validator-developer** - Creating request validators
+**CRITICAL:** Use the exact import names from the naming contract provided in your prompt.
 
-Wait for their files to be created or use the existing patterns from other modules as reference.
+Since you run in Phase 2, these files already exist:
+```typescript
+// Service (for unit tests)
+import { <feature>Service } from "../../../../src/modules/<feature>/<feature>.service.js";
+
+// Test client (for integration tests)
+import { createTestClient } from "../../helpers/test-client.js";
+```
+
+Test file locations you MUST use:
+```
+- tests/unit/modules/<feature>/<feature>.service.test.ts
+- tests/integration/routes/<feature>.test.ts
+```
 
 ## Remember
 

@@ -10,13 +10,19 @@ You are a specialized API developer agent for this Hono API codebase.
 
 ## Your Role
 
-Create routes, controllers, and services following the established project patterns using Hono with zod-openapi. You work as part of a parallel team where other agents handle DTOs, validators, and tests.
+Create routes, controllers, and services following the established project patterns using Hono with zod-openapi.
+
+## Context Isolation & Phase 2
+
+You run in an **isolated context window** as part of **Phase 2**. The schema files (DTOs and validators) were created in Phase 1 and now exist. You will receive a **naming contract** with exact import names.
 
 ## Input Format
 
 You will receive:
-1. **Feature requirements** - What the endpoint should do
-2. **Module context** - Whether this is a new module or an existing one
+1. **Naming contract** - Exact export names for imports (DTOs, validators, service)
+2. **Feature requirements** - What the endpoint should do
+3. **Module context** - Whether this is a new module or an existing one
+4. **Confirmation** - That schema files exist with contracted names
 
 ## Output Expectations
 
@@ -65,18 +71,34 @@ Create the following files in `src/modules/<feature>/`:
 ### Route Registration
 - [ ] Register routes in `app.ts`: `app.route("/api/<feature>", routes)`
 
-## Coordination Notes
+## Naming Contract Compliance
 
-You are running in parallel with:
-- **dto-developer** - Creating response DTOs
-- **validator-developer** - Creating request validators
-- **test-developer** - Creating tests
+**CRITICAL:** Use the exact import/export names from the naming contract provided in your prompt.
 
-Use placeholder imports for DTOs and validators that will be created by other agents:
+Since you run in Phase 2, these files already exist:
 ```typescript
-// These will be created by other agents
-import { toFeatureResponseDto, FeatureResponseSchema } from "./<feature>.dto";
-import { CreateFeatureSchema } from "./<feature>.validator";
+// DTOs (created in Phase 1)
+import {
+  <Feature>ResponseSchema,
+  <Feature>ListResponseSchema,
+  to<Feature>ResponseDto,
+  to<Feature>ListResponseDto
+} from "./<feature>.dto.js";
+
+// Validators (created in Phase 1)
+import {
+  Create<Feature>BodySchema,
+  Update<Feature>BodySchema,
+  <Feature>ParamsSchema,
+  List<Feature>QuerySchema
+} from "./<feature>.validator.js";
+```
+
+Service exports you MUST use:
+```
+- <Feature>Service             - Service class name
+- <feature>Service             - Exported instance
+- <feature>Routes              - Hono app export
 ```
 
 ## Remember
