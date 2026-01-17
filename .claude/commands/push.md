@@ -33,13 +33,13 @@ Create a branch, run checks, and push changes with flexible options.
 | `--skip-lint` | Skip linting (use cautiously) |
 | `--amend` | Amend the last commit instead of creating a new one |
 | `--no-verify` | Skip all checks (lint, format, typecheck, tests) |
-| `--pr` | Create a pull request after pushing |
-| `--draft` | Create PR as draft (requires `--pr`) |
+| `--no-pr` | Skip creating a pull request (PR is created by default) |
+| `--draft` | Create PR as draft |
 
 **Examples:**
 
 ```bash
-# Feature branch from current branch
+# Feature branch from current branch (creates PR to dev by default)
 /push feat:notifications
 
 # Hotfix from main
@@ -48,8 +48,11 @@ Create a branch, run checks, and push changes with flexible options.
 # Quick push without tests (for WIP)
 /push feat:wip-feature --skip-tests
 
-# Push and create PR
-/push feat:user-profiles --pr
+# Push without creating a PR
+/push feat:user-profiles --no-pr
+
+# Create PR as draft
+/push feat:experimental --draft
 
 # Amend last commit with new changes
 /push --amend
@@ -64,7 +67,7 @@ Parse the arguments to extract:
 2. **Base branch** - From `--base=` flag or use current branch
 3. **Skip flags** - `--skip-tests`, `--skip-lint`, `--no-verify`
 4. **Amend flag** - `--amend` for amending last commit
-5. **PR flags** - `--pr` and `--draft`
+5. **PR flags** - `--no-pr` (to skip PR creation) and `--draft`
 
 **Branch prefix mapping:**
 ```
@@ -154,11 +157,15 @@ Otherwise, run checks in order:
 **If NOT `--amend`:**
 1. Run `git push -u origin <branch-name>`
 
-### Step 4: Create PR (if `--pr` flag)
+### Step 4: Create PR (default behavior)
 
-If `--pr` flag is set:
+**Skip this step if `--no-pr` flag is set or if `--amend` is set.**
 
-1. Determine the target branch (the base branch used in Step 1, or `main`/`dev`)
+Otherwise, create a PR:
+
+1. Determine the target branch:
+   - If `--base=<branch>` was provided → use that branch
+   - Otherwise → use `dev` as the default target
 2. Run:
    ```bash
    gh pr create --base <target-branch> --title "<PR title>" --body "<PR body>" [--draft]
@@ -182,10 +189,9 @@ After completion, provide a summary:
 
 ### Remote:
 - Pushed to: `origin/<branch-name>`
-- PR: <PR URL if created> (or "Not created")
+- PR: <PR URL> (or "Skipped (--no-pr)" or "Skipped (--amend)")
 
 ### Next Steps:
-- Create PR: `gh pr create --base <target>`
 - View changes: `git log --oneline -5`
 ```
 
