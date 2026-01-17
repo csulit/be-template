@@ -1,40 +1,5 @@
 services:
   # =============================================================================
-  # Application
-  # =============================================================================
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    container_name: be-template-app
-    restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_template?schema=public
-      BASE_URL: ${BASE_URL:-http://localhost:3000}
-      AUTH_SECRET: ${AUTH_SECRET}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
-      # Optional services
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      SENTRY_DSN: ${SENTRY_DSN:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 10s
-      retries: 3
-    networks:
-      - be-template-network
-
-  # =============================================================================
   # Database
   # =============================================================================
   postgres:
@@ -51,6 +16,25 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - be-template-network
+
+  # =============================================================================
+  # Redis
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: be-template-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,6 +63,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   be-template-network:

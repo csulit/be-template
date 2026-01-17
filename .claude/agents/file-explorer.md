@@ -42,6 +42,7 @@ src/
 │   ├── validators/    # Reusable request validators
 │   └── utils/         # Helper functions
 ├── providers/         # External service wrappers
+├── jobs/              # Background jobs and listeners
 └── generated/prisma/  # Prisma client (don't explore)
 
 docs/

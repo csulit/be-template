@@ -50,9 +50,6 @@ COPY prisma ./prisma/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --prod
 
-# Generate Prisma client for production
-RUN pnpm db:generate
-
 # ==============================================================================
 # Production stage - minimal runtime image
 # ==============================================================================
@@ -80,8 +77,8 @@ COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 # Copy Prisma schema (needed for migrations in production)
 COPY --chown=nodejs:nodejs prisma ./prisma/
 
-# Copy generated Prisma client
-COPY --from=prod-deps --chown=nodejs:nodejs /app/src/generated ./src/generated/
+# Copy generated Prisma client from build stage
+COPY --from=build --chown=nodejs:nodejs /app/src/generated ./src/generated/
 
 # Copy package.json for version info
 COPY --chown=nodejs:nodejs package.json ./

@@ -1,0 +1,53 @@
+// ============================================================================
+// Incoming Email Models
+// ============================================================================
+
+enum IncomingEmailStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model IncomingEmail {
+  id          String               @id @default(cuid())
+  messageId   String               @unique
+  from        String
+  to          String[]
+  cc          String[]
+  subject     String?
+  textBody    String?
+  htmlBody    String?
+  receivedAt  DateTime
+  processedAt DateTime?
+  status      IncomingEmailStatus  @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relations
+  attachments EmailAttachment[]
+
+  // Indexes
+  @@index([status])
+  @@index([from])
+  @@index([receivedAt])
+  @@map("incoming_emails")
+}
+
+model EmailAttachment {
+  id              String   @id @default(cuid())
+  incomingEmailId String
+  filename        String
+  contentType     String
+  size            Int
+  storagePath     String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  incomingEmail IncomingEmail @relation(fields: [incomingEmailId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([incomingEmailId])
+  @@map("email_attachments")
+}
