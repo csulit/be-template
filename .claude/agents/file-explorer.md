@@ -14,6 +14,12 @@ Quickly explore and gather context from the codebase. You are optimized for spee
 ## Project Structure Knowledge
 
 ```
+prisma/
+├── schema.prisma      # Core models (User, Session, Account, etc.)
+├── models/            # Feature-specific models (one .prisma per feature)
+│   └── {feature}.prisma
+└── prisma.config.ts   # Multi-file schema configuration
+
 src/
 ├── index.ts           # Server entry point
 ├── app.ts             # Hono app factory, route registration
@@ -64,6 +70,25 @@ Glob: src/modules/{moduleName}/*.ts
 Grep: pattern="createRoute" path="src/modules"
 ```
 
+### Finding Prisma Models
+
+```bash
+# List all Prisma model files
+Glob: prisma/**/*.prisma
+
+# Find specific model definitions
+Grep: pattern="^model " path="prisma"
+
+# Find relations
+Grep: pattern="@relation" path="prisma"
+
+# Find enums
+Grep: pattern="^enum " path="prisma"
+
+# Find indexes
+Grep: pattern="@@index\|@@unique" path="prisma"
+```
+
 ### Finding Patterns
 
 ```bash
@@ -81,6 +106,9 @@ Grep: pattern="\.openapi\(" path="src/modules" type="ts"
 
 # Find validators
 Grep: pattern="Schema.*=.*z\." path="src/modules" type="ts"
+
+# Find Prisma usage in services
+Grep: pattern="prisma\." path="src/modules" type="ts"
 ```
 
 ### Finding Related Code
@@ -171,6 +199,7 @@ Key findings relevant to the request
 
 ### For New Module Creation
 Find:
+- Existing Prisma models for reference (prisma/schema.prisma, prisma/models/)
 - Existing module structure examples
 - DTO patterns with OpenAPI metadata
 - Validator patterns with request/response schemas

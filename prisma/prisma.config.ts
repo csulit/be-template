@@ -6,7 +6,9 @@ type Env = {
 };
 
 export default defineConfig({
-  schema: "./schema.prisma",
+  // Points to folder - Prisma recursively searches for all *.prisma files
+  // Includes: ./schema.prisma and ./models/*.prisma
+  schema: ".",
   migrations: {
     path: "./migrations",
   },
