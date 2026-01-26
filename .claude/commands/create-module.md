@@ -1,3 +1,7 @@
+---
+argument-hint: <feature requirements> | <module context>
+---
+
 # Create Module Command
 
 Orchestrates module creation by running specialized agents in phases for optimal coordination.
@@ -19,7 +23,29 @@ Orchestrates module creation by running specialized agents in phases for optimal
 
 ## Instructions
 
-Parse the arguments by splitting on `|`:
+### Step 0: Validate Input
+
+Check if `$ARGUMENTS` is empty, missing the `|` separator, or incomplete.
+
+**If arguments are missing or malformed**, do NOT proceed. Instead, ask the user to provide input using this prompt:
+
+```
+To create a module, please provide:
+
+/create-module <feature requirements> | <module context>
+
+Examples:
+  /create-module Create a notifications module with CRUD endpoints | new module
+  /create-module Add a soft-delete endpoint for documents | existing module: documents
+
+Format:
+  - Before the "|": Describe the feature, endpoints, and business logic needed
+  - After the "|": Either "new module" or "existing module: <name>"
+```
+
+**If only the module context is missing** (no `|` found), ask: "Is this a new module or extending an existing one? Please re-run with the format: `/create-module <requirements> | new module` or `/create-module <requirements> | existing module: <name>`"
+
+**If arguments are valid**, parse by splitting on `|`:
 
 1. **Feature requirements** (before `|`) - What needs to be built
 2. **Module context** (after `|`) - Either "new module" or "existing module: <name>"

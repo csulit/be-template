@@ -29,7 +29,6 @@ model User {
   emailVerified         Boolean   @default(false)
   image                 String?
   role                  String    @default("user")
-  allowApprovalOverride Boolean   @default(false)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -45,6 +44,7 @@ model User {
   twofactors            TwoFactor[]
   members               Member[]
   invitations           Invitation[]
+  reimbursementUsers    ReimbursementUser[]
 
   @@map("users")
 }
@@ -171,8 +171,12 @@ model Organization {
   logo        String?
   createdAt   DateTime     @default(now())
   metadata    String?
-  members     Member[]
-  invitations Invitation[]
+  members                     Member[]
+  invitations                 Invitation[]
+  reimbursementRoles          ReimbursementRole[]
+  reimbursementTypeCategories ReimbursementTypeCategory[]
+  reimbursementUsers          ReimbursementUser[]
+  reimbursementTypes          ReimbursementType[]
 
   @@unique([slug])
   @@map("organization")
