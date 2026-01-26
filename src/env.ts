@@ -13,7 +13,7 @@ const envSchema = z.object({
     .transform((s) => (s === "*" ? ["*"] : s.split(",").map((origin) => origin.trim()))),
 
   // Database
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
 
   // Auth (better-auth)
   AUTH_SECRET: z.string().min(32),
@@ -34,7 +34,7 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
 
   // Redis (for BullMQ job queues)
-  REDIS_URL: z.string().url().default("redis://localhost:6379"),
+  REDIS_URL: z.url().default("redis://localhost:6379"),
 
   // IMAP Configuration (optional)
   IMAP_HOST: z.string().optional(),
@@ -58,7 +58,7 @@ function validateEnv(): Env {
 
   if (!parsed.success) {
     console.error("❌ Invalid environment variables:");
-    console.error(parsed.error.flatten().fieldErrors);
+    console.error(z.treeifyError(parsed.error));
     process.exit(1);
   }
 
