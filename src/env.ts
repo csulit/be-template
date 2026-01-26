@@ -52,6 +52,9 @@ const envSchema = z.object({
   // Socket.IO Configuration
   SOCKET_IO_ENABLED: z.coerce.boolean().default(true),
   SOCKET_IO_PATH: z.string().default("/socket.io"),
+
+  // Seed (optional, only used by db:seed)
+  SEED_ADMIN_PASSWORD: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
