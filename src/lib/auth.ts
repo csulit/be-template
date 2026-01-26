@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import {
   admin,
   apiKey,
+  bearer,
   twoFactor,
   magicLink,
   organization,
@@ -31,6 +32,7 @@ export const auth = betterAuth({
   plugins: [
     admin(),
     apiKey(),
+    bearer(),
     twoFactor(),
     organization(),
     multiSession(),
@@ -65,7 +67,10 @@ export const auth = betterAuth({
       : {},
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    expiresIn:
+      env.NODE_ENV === "development"
+        ? 60 * 60 * 24 * 30 // 30 days in development
+        : 60 * 60 * 24 * 7, // 7 days in production
     updateAge: 60 * 60 * 24, // 1 day
     cookieCache: {
       enabled: true,
