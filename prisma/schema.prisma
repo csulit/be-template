@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -22,18 +23,27 @@ enum DocumentType {
 // ============================================================================
 
 model User {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  role          String    @default("user")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          String   @default("user")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   sessions  Session[]
   accounts  Account[]
   documents Document[]
+
+  banned           Boolean?     @default(false)
+  banReason        String?
+  banExpires       DateTime?
+  twoFactorEnabled Boolean?     @default(false)
+  apikeys          Apikey[]
+  twofactors       TwoFactor[]
+  members          Member[]
+  invitations      Invitation[]
 
   @@map("users")
 }
@@ -50,7 +60,11 @@ model Session {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  impersonatedBy       String?
+  activeOrganizationId String?
+
   @@map("sessions")
+  @@index([userId])
 }
 
 model Account {
@@ -71,6 +85,7 @@ model Account {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("accounts")
+  @@index([userId])
 }
 
 model Verification {
@@ -82,6 +97,7 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verifications")
+  @@index([identifier])
 }
 
 // ============================================================================
@@ -104,4 +120,90 @@ model Document {
   @@index([userId])
   @@index([type])
   @@map("documents")
+}
+
+model Apikey {
+  id                  String    @id @default(cuid())
+  name                String?
+  start               String?
+  prefix              String?
+  key                 String
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refillInterval      Int?
+  refillAmount        Int?
+  lastRefillAt        DateTime?
+  enabled             Boolean?  @default(true)
+  rateLimitEnabled    Boolean?  @default(true)
+  rateLimitTimeWindow Int?      @default(86400000)
+  rateLimitMax        Int?      @default(10)
+  requestCount        Int?      @default(0)
+  remaining           Int?
+  lastRequest         DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  permissions         String?
+  metadata            String?
+
+  @@index([key])
+  @@index([userId])
+  @@map("apikey")
+}
+
+model TwoFactor {
+  id          String @id @default(cuid())
+  secret      String
+  backupCodes String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String
+  logo        String?
+  createdAt   DateTime     @default(now())
+  metadata    String?
+  members     Member[]
+  invitations Invitation[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
 }
