@@ -1,6 +1,7 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { usersService } from "./users.service.js";
 import type {
+  DevTokenRoute,
   GetProfileRoute,
   UpdateProfileRoute,
   ListUsersRoute,
@@ -20,6 +21,19 @@ import type {
 } from "./users.route.js";
 
 export const usersController = {
+  generateDevToken: (async (c) => {
+    const body = c.req.valid("json");
+    const result = await usersService.generateDevToken(body);
+
+    return c.json(
+      {
+        success: true as const,
+        data: result,
+      },
+      200
+    );
+  }) as RouteHandler<DevTokenRoute>,
+
   getProfile: (async (c) => {
     const user = c.get("user");
     const profile = await usersService.getById(user.id);

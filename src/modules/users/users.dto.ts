@@ -123,3 +123,18 @@ export type OrganizationDTO = z.infer<typeof OrganizationSchema>;
 export const OrganizationResponseSchema = createSuccessResponseSchema(OrganizationSchema);
 
 export const OrganizationListResponseSchema = createPaginatedResponseSchema(OrganizationSchema);
+
+// ─── Dev Token Schema ───────────────────────────────────────────────────────
+
+export const DevTokenResponseDataSchema = z.object({
+  token: z.string().openapi({
+    description: "Session token to use as Bearer token",
+    example: "session_token_abc123",
+  }),
+  expiresAt: z.string().datetime().openapi({
+    description: "Token expiration timestamp",
+    example: "2025-02-01T00:00:00.000Z",
+  }),
+});
+
+export const DevTokenResponseSchema = createSuccessResponseSchema(DevTokenResponseDataSchema);

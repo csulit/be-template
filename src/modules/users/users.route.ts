@@ -11,6 +11,7 @@ import {
   OrgMemberResponseSchema,
   OrganizationResponseSchema,
   OrganizationListResponseSchema,
+  DevTokenResponseSchema,
 } from "./users.dto.js";
 import {
   UpdateProfileSchema,
@@ -26,6 +27,7 @@ import {
   UpdateOrgSchema,
   SetOrgMemberRoleSchema,
   TransferOwnershipSchema,
+  DevTokenSchema,
 } from "./users.validator.js";
 
 const app = new OpenAPIHono<AuthEnv>();
@@ -785,7 +787,47 @@ const transferOrgOwnershipRoute = createRoute({
   },
 });
 
+// ─── Dev-only Routes ────────────────────────────────────────────────────────
+
+// POST /api/users/dev-token
+const devTokenRoute = createRoute({
+  method: "post",
+  path: "/dev-token",
+  tags: ["Users (Dev)"],
+  summary: "Generate dev access token",
+  description:
+    "Generates a session token from email/password credentials. Only available in development mode. Use the returned token as a Bearer token in the Authorization header.",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: DevTokenSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Token generated successfully",
+      content: {
+        "application/json": {
+          schema: DevTokenResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid credentials or not in development mode",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
 // Export route types for controller type safety
+export type DevTokenRoute = typeof devTokenRoute;
 export type GetProfileRoute = typeof getProfileRoute;
 export type UpdateProfileRoute = typeof updateProfileRoute;
 export type ListUsersRoute = typeof listUsersRoute;
@@ -804,6 +846,8 @@ export type RemoveOrgMemberRoute = typeof removeOrgMemberRoute;
 export type TransferOrgOwnershipRoute = typeof transferOrgOwnershipRoute;
 
 // Register routes - static paths must come before parameterized paths
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.openapi(devTokenRoute, usersController.generateDevToken as any);
 app.openapi(getProfileRoute, usersController.getProfile);
 app.openapi(updateProfileRoute, usersController.updateProfile);
 app.openapi(listUsersRoute, usersController.listUsers);

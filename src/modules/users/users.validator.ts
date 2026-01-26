@@ -228,3 +228,22 @@ export const TransferOwnershipSchema = z
   .openapi("TransferOwnershipBody");
 
 export type TransferOwnershipInput = z.infer<typeof TransferOwnershipSchema>;
+
+// ──────────────────────────────────────────────
+// Dev-only token generation
+// ──────────────────────────────────────────────
+
+export const DevTokenSchema = z
+  .object({
+    email: z.string().email().openapi({
+      description: "User email address",
+      example: "admin@example.com",
+    }),
+    password: z.string().min(1).openapi({
+      description: "User password",
+      example: "password123",
+    }),
+  })
+  .openapi("DevTokenBody");
+
+export type DevTokenInput = z.infer<typeof DevTokenSchema>;

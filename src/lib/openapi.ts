@@ -4,6 +4,13 @@ import { env } from "../env.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setupOpenAPI(app: OpenAPIHono<any>) {
+  // Register Bearer auth security scheme
+  app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "Session token obtained from /api/auth/sign-in/email or /api/users/dev-token",
+  });
+
   // Serve OpenAPI spec
   app.doc("/openapi.json", {
     openapi: "3.1.0",
@@ -18,6 +25,7 @@ export function setupOpenAPI(app: OpenAPIHono<any>) {
         description: env.NODE_ENV === "production" ? "Production" : "Development",
       },
     ],
+    security: [{ bearerAuth: [] }],
   });
 
   // Swagger UI (non-production only)

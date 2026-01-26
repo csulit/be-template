@@ -1,6 +1,8 @@
 import { prisma } from "../../db.js";
-import { NotFound, Conflict } from "../../lib/errors.js";
+import { NotFound, Conflict, BadRequest } from "../../lib/errors.js";
 import { calculatePagination, getPrismaSkipTake } from "../../shared/utils/pagination.js";
+import { auth } from "../../lib/auth.js";
+import { env } from "../../env.js";
 import type {
   UpdateProfileInput,
   ListUsersQuery,
@@ -12,6 +14,7 @@ import type {
   UpdateOrgInput,
   SetOrgMemberRoleInput,
   TransferOwnershipInput,
+  DevTokenInput,
 } from "./users.validator.js";
 
 export class UsersService {
@@ -361,6 +364,41 @@ export class UsersService {
     }
 
     return updatedOrg;
+  }
+
+  // =========================================================================
+  // Dev-only Token Generation
+  // =========================================================================
+
+  async generateDevToken(data: DevTokenInput) {
+    if (env.NODE_ENV !== "development") {
+      throw BadRequest("Dev token generation is only available in development mode");
+    }
+
+    const response = await auth.api.signInEmail({
+      body: {
+        email: data.email,
+        password: data.password,
+      },
+    });
+
+    if (!response.token) {
+      throw BadRequest("Invalid email or password");
+    }
+
+    // Look up the session to get the expiration time
+    const session = await auth.api.getSession({
+      headers: new Headers({
+        authorization: `Bearer ${response.token}`,
+      }),
+    });
+
+    return {
+      token: response.token,
+      expiresAt: session?.session.expiresAt
+        ? new Date(session.session.expiresAt).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    };
   }
 }
 
