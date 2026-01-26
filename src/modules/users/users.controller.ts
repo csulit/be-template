@@ -1,5 +1,6 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { usersService } from "./users.service.js";
+import { toUserProfileWithOrgsDto } from "./users.dto.js";
 import type {
   DevTokenRoute,
   GetProfileRoute,
@@ -36,12 +37,12 @@ export const usersController = {
 
   getProfile: (async (c) => {
     const user = c.get("user");
-    const profile = await usersService.getById(user.id);
+    const profile = await usersService.getProfileWithOrgs(user.id);
 
     return c.json(
       {
         success: true as const,
-        data: profile,
+        data: toUserProfileWithOrgsDto(profile),
       },
       200
     );
@@ -51,12 +52,13 @@ export const usersController = {
     const user = c.get("user");
     const body = c.req.valid("json");
 
-    const updated = await usersService.updateProfile(user.id, body);
+    await usersService.updateProfile(user.id, body);
+    const profile = await usersService.getProfileWithOrgs(user.id);
 
     return c.json(
       {
         success: true as const,
-        data: updated,
+        data: toUserProfileWithOrgsDto(profile),
       },
       200
     );

@@ -90,20 +90,6 @@ describe("Users Routes", () => {
     role: "admin",
   };
 
-  const mockMember = {
-    id: "clxmember000000000001",
-    organizationId: "clxorg0000000000001",
-    userId: "clxuser00000000000001",
-    role: "member",
-    createdAt: new Date("2024-01-15T10:30:00.000Z"),
-    user: {
-      id: "clxuser00000000000001",
-      name: "Test User",
-      email: "test@example.com",
-      image: null,
-    },
-  };
-
   const mockOrg = {
     id: "clxorg0000000000001",
     name: "Acme Corp",
@@ -154,6 +140,95 @@ describe("Users Routes", () => {
         return next();
       }
     );
+  });
+
+  // ==========================================================================
+  // GET /api/users/me - Get Current User Profile with Organizations
+  // ==========================================================================
+
+  describe("GET /api/users/me", () => {
+    const mockUserWithOrgs = {
+      ...mockUser,
+      members: [
+        {
+          id: "clxmember000000000001",
+          organizationId: "clxorg0000000000001",
+          userId: "clxuser00000000000001",
+          role: "member",
+          createdAt: new Date("2024-01-15T10:30:00.000Z"),
+          organization: {
+            id: "clxorg0000000000001",
+            name: "Acme Corp",
+            slug: "acme-corp",
+            logo: null,
+          },
+        },
+      ],
+    };
+
+    const mockUserWithEmptyOrgs = {
+      ...mockUser,
+      members: [],
+    };
+
+    it("should return user profile with organizations", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUserWithOrgs as never);
+
+      const res = await client.api.users.me.$get({});
+
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json).toMatchObject({
+        success: true,
+        data: expect.objectContaining({
+          id: "clxuser00000000000001",
+          name: "Test User",
+          email: "test@example.com",
+          organizations: expect.any(Array),
+        }),
+      });
+      expect(json.data.organizations).toHaveLength(1);
+      expect(json.data.organizations[0]).toMatchObject({
+        id: "clxmember000000000001",
+        role: "member",
+        organization: {
+          id: "clxorg0000000000001",
+          name: "Acme Corp",
+          slug: "acme-corp",
+          logo: null,
+        },
+      });
+    });
+
+    it("should return empty organizations array when user has no memberships", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUserWithEmptyOrgs as never);
+
+      const res = await client.api.users.me.$get({});
+
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json).toMatchObject({
+        success: true,
+        data: expect.objectContaining({
+          id: "clxuser00000000000001",
+          organizations: [],
+        }),
+      });
+      expect(json.data.organizations).toHaveLength(0);
+    });
+
+    it("should return 404 when user not found", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+      const res = await client.api.users.me.$get({});
+
+      expect(res.status).toBe(404);
+
+      const json = await res.json();
+      expect(json.success).toBe(false);
+    });
   });
 
   // ==========================================================================
@@ -490,7 +565,7 @@ describe("Users Routes", () => {
 
   describe("GET /api/users/org-members", () => {
     it("should return paginated org members list", async () => {
-      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMember] as never);
+      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMemberWithUser] as never);
       vi.mocked(prisma.member.count).mockResolvedValue(1);
 
       const res = await client.api.users["org-members"].$get({
