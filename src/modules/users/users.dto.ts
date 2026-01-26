@@ -21,7 +21,98 @@ export const UserResponseSchema = createSuccessResponseSchema(UserSchema);
 
 export const UserProfileSchema = UserSchema.omit({ emailVerified: true });
 
-export const UserProfileResponseSchema = createSuccessResponseSchema(UserProfileSchema);
+// ─── User Organization Membership Schema ─────────────────────────────────────
+
+export const MembershipOrganizationSchema = z.object({
+  id: z.string().cuid().openapi({
+    description: "Organization unique identifier",
+    example: "clx1234567890orgdef",
+  }),
+  name: z.string().openapi({
+    description: "Organization name",
+    example: "Acme Corp",
+  }),
+  slug: z.string().openapi({
+    description: "URL-friendly organization identifier",
+    example: "acme-corp",
+  }),
+  logo: z.string().url().nullable().openapi({
+    description: "Organization logo URL",
+    example: "https://example.com/logo.png",
+  }),
+});
+
+export const UserOrganizationMembershipSchema = z.object({
+  id: z.string().cuid().openapi({
+    description: "Membership ID",
+    example: "clx1234567890member",
+  }),
+  role: z.string().openapi({
+    description: "User's role within the organization",
+    example: "member",
+  }),
+  createdAt: z.date().openapi({
+    description: "When the user joined the organization",
+    example: "2024-01-01T00:00:00.000Z",
+  }),
+  organization: MembershipOrganizationSchema,
+});
+
+export type UserOrganizationMembershipDTO = z.infer<typeof UserOrganizationMembershipSchema>;
+
+export const UserProfileWithOrgsSchema = UserProfileSchema.extend({
+  organizations: z.array(UserOrganizationMembershipSchema).openapi({
+    description: "Organizations the user belongs to",
+  }),
+});
+
+export type UserProfileWithOrgsDTO = z.infer<typeof UserProfileWithOrgsSchema>;
+
+export const UserProfileResponseSchema = createSuccessResponseSchema(UserProfileWithOrgsSchema);
+
+export type UserWithMembers = {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  role: string;
+  createdAt: Date;
+  updatedAt: Date;
+  members: Array<{
+    id: string;
+    role: string;
+    createdAt: Date;
+    organization: {
+      id: string;
+      name: string;
+      slug: string;
+      logo: string | null;
+    };
+  }>;
+};
+
+export function toUserProfileWithOrgsDto(user: UserWithMembers): UserProfileWithOrgsDTO {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    organizations: user.members.map((member) => ({
+      id: member.id,
+      role: member.role,
+      createdAt: member.createdAt,
+      organization: {
+        id: member.organization.id,
+        name: member.organization.name,
+        slug: member.organization.slug,
+        logo: member.organization.logo,
+      },
+    })),
+  };
+}
 
 // ─── Admin User Schema ───────────────────────────────────────────────────────
 

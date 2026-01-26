@@ -57,20 +57,6 @@ describe("UsersService", () => {
     role: "admin",
   };
 
-  const mockMember = {
-    id: "clxmember000000000001",
-    organizationId: "clxorg0000000000001",
-    userId: "clxuser00000000000001",
-    role: "member",
-    createdAt: new Date("2024-01-15T10:30:00.000Z"),
-    user: {
-      id: "clxuser00000000000001",
-      name: "Test User",
-      email: "test@example.com",
-      image: null,
-    },
-  };
-
   const mockOrg = {
     id: "clxorg0000000000001",
     name: "Acme Corp",
@@ -104,6 +90,83 @@ describe("UsersService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  // ==========================================================================
+  // getProfileWithOrgs
+  // ==========================================================================
+
+  describe("getProfileWithOrgs", () => {
+    const mockUserWithOrgs = {
+      ...mockUser,
+      members: [
+        {
+          id: "clxmember000000000001",
+          organizationId: "clxorg0000000000001",
+          userId: "clxuser00000000000001",
+          role: "member",
+          createdAt: new Date("2024-01-15T10:30:00.000Z"),
+          organization: {
+            id: "clxorg0000000000001",
+            name: "Acme Corp",
+            slug: "acme-corp",
+            logo: null,
+          },
+        },
+      ],
+    };
+
+    const mockUserWithEmptyOrgs = {
+      ...mockUser,
+      members: [],
+    };
+
+    it("should return user with organization memberships", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUserWithOrgs as never);
+
+      const result = await service.getProfileWithOrgs("clxuser00000000000001");
+
+      expect(result).toEqual(mockUserWithOrgs);
+      expect(result.members).toHaveLength(1);
+      expect(result.members[0]).toMatchObject({
+        id: "clxmember000000000001",
+        role: "member",
+        organization: {
+          id: "clxorg0000000000001",
+          name: "Acme Corp",
+          slug: "acme-corp",
+          logo: null,
+        },
+      });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: "clxuser00000000000001" },
+        include: {
+          members: {
+            include: {
+              organization: {
+                select: { id: true, name: true, slug: true, logo: true },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it("should return user with empty organizations array", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUserWithEmptyOrgs as never);
+
+      const result = await service.getProfileWithOrgs("clxuser00000000000001");
+
+      expect(result).toEqual(mockUserWithEmptyOrgs);
+      expect(result.members).toHaveLength(0);
+      expect(result.members).toEqual([]);
+    });
+
+    it("should throw NotFound for non-existent user", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+      await expect(service.getProfileWithOrgs("nonexistent")).rejects.toThrow("User not found");
+    });
   });
 
   // ==========================================================================
@@ -435,7 +498,7 @@ describe("UsersService", () => {
 
   describe("listOrgMembers", () => {
     it("should return paginated org members with user details", async () => {
-      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMember] as never);
+      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMemberWithUser] as never);
       vi.mocked(prisma.member.count).mockResolvedValue(1);
 
       const result = await service.listOrgMembers({
@@ -514,7 +577,7 @@ describe("UsersService", () => {
     });
 
     it("should handle default pagination", async () => {
-      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMember] as never);
+      vi.mocked(prisma.member.findMany).mockResolvedValue([mockMemberWithUser] as never);
       vi.mocked(prisma.member.count).mockResolvedValue(1);
 
       const result = await service.listOrgMembers({

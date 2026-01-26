@@ -30,6 +30,27 @@ export class UsersService {
     return user;
   }
 
+  async getProfileWithOrgs(id: string) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        members: {
+          include: {
+            organization: {
+              select: { id: true, name: true, slug: true, logo: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw NotFound("User not found");
+    }
+
+    return user;
+  }
+
   async updateProfile(id: string, data: UpdateProfileInput) {
     const user = await prisma.user.findUnique({
       where: { id },
