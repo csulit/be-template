@@ -23,42 +23,43 @@ enum DocumentType {
 // ============================================================================
 
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  role          String   @default("user")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  name                  String
+  email                 String    @unique
+  emailVerified         Boolean   @default(false)
+  image                 String?
+  role                  String    @default("user")
+  allowApprovalOverride Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  sessions  Session[]
-  accounts  Account[]
-  documents Document[]
+  sessions              Session[]
+  accounts              Account[]
+  documents             Document[]
 
-  banned           Boolean?     @default(false)
-  banReason        String?
-  banExpires       DateTime?
-  twoFactorEnabled Boolean?     @default(false)
-  apikeys          Apikey[]
-  twofactors       TwoFactor[]
-  members          Member[]
-  invitations      Invitation[]
+  banned                Boolean?     @default(false)
+  banReason             String?
+  banExpires            DateTime?
+  twoFactorEnabled      Boolean?     @default(false)
+  apikeys               Apikey[]
+  twofactors            TwoFactor[]
+  members               Member[]
+  invitations           Invitation[]
 
   @@map("users")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
+  id                   String   @id @default(cuid())
+  expiresAt            DateTime
+  token                String   @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress            String?
+  userAgent            String?
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   impersonatedBy       String?
   activeOrganizationId String?
@@ -114,8 +115,8 @@ model Document {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
