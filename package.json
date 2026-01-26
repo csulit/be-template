@@ -52,6 +52,7 @@
     "imapflow": "^1.2.6",
     "ioredis": "5.9.1",
     "mailparser": "^3.9.1",
+    "openai": "^6.16.0",
     "pg": "^8.17.2",
     "socket.io": "^4.8.3",
     "zod": "^4.3.6"
