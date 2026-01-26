@@ -1,0 +1,76 @@
+// ============================================================================
+// Reimbursement Models
+// ============================================================================
+
+model ReimbursementRole {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reimbursementUsers ReimbursementUser[]
+
+  // Indexes
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("reimbursement_roles")
+}
+
+model ReimbursementTypeCategory {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reimbursementTypes ReimbursementType[]
+
+  // Indexes
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("reimbursement_type_categories")
+}
+
+model ReimbursementUser {
+  id             String   @id @default(cuid())
+  userId         String
+  roleId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         ReimbursementRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("reimbursement_users")
+}
+
+model ReimbursementType {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  categoryId     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     ReimbursementTypeCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("reimbursement_types")
+}
