@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["tsx", "src/mcp/server.ts"]
+    }
+  }
+}
