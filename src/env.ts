@@ -46,6 +46,9 @@ const envSchema = z.object({
   // OpenAI (optional)
   OPENAI_API_KEY: z.string().optional(),
 
+  // Resend (optional)
+  RESEND_API_KEY: z.string().optional(),
+
   // Socket.IO Configuration
   SOCKET_IO_ENABLED: z.coerce.boolean().default(true),
   SOCKET_IO_PATH: z.string().default("/socket.io"),
