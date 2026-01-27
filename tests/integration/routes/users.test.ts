@@ -19,7 +19,7 @@ const { orgMiddlewareMock } = vi.hoisted(() => ({
 vi.mock("../../../src/middleware/auth.middleware.js", () => ({
   authMiddleware: vi.fn(
     async (c: { set: (key: string, value: unknown) => void }, next: () => Promise<void>) => {
-      c.set("user", { id: "clxuser00000000000001", email: "test@example.com", role: "admin" });
+      c.set("user", { id: "clxuser00000000000001", email: "test@example.com", role: "superadmin" });
       c.set("session", { id: "session_1" });
       return next();
     }
@@ -42,6 +42,7 @@ vi.mock("../../../src/db.js", () => {
     member: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
@@ -60,6 +61,17 @@ vi.mock("../../../src/db.js", () => {
   };
   return { prisma: mockPrisma };
 });
+
+const mockCreateUser = vi.fn();
+vi.mock("../../../src/lib/auth.js", () => ({
+  auth: {
+    api: {
+      createUser: (...args: unknown[]) => mockCreateUser(...args),
+      signInEmail: vi.fn(),
+      getSession: vi.fn(),
+    },
+  },
+}));
 
 import { createTestClient } from "../../helpers/test-client.js";
 import { prisma } from "../../../src/db.js";
@@ -980,6 +992,123 @@ describe("Users Routes", () => {
       const res = await client.api.users.orgs[":orgId"]["transfer-ownership"].$post({
         param: { orgId: "clxorg9999999nonexist" },
         json: { newOwnerId: "clxuser00000000000001" },
+      });
+
+      expect(res.status).toBe(404);
+
+      const json = await res.json();
+      expect(json.success).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // POST /api/users/create - Create User
+  // ==========================================================================
+
+  describe("POST /api/users/create", () => {
+    const createUserBody = {
+      name: "New User",
+      email: "newuser@example.com",
+      password: "securepassword123",
+    };
+
+    const mockCreatedUser = {
+      id: "clxuser00000000000003",
+      name: "New User",
+      email: "newuser@example.com",
+      emailVerified: false,
+      image: null,
+      role: "user",
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      twoFactorEnabled: false,
+      createdAt: new Date("2024-01-20T10:00:00.000Z"),
+      updatedAt: new Date("2024-01-20T10:00:00.000Z"),
+    };
+
+    it("should create a user successfully (superadmin)", async () => {
+      // No existing user with this email
+      vi.mocked(prisma.user.findUnique)
+        .mockResolvedValueOnce(null) // email uniqueness check
+        .mockResolvedValueOnce(mockCreatedUser as never); // fetch after creation
+
+      mockCreateUser.mockResolvedValue({
+        user: { id: "clxuser00000000000003", email: "newuser@example.com" },
+      });
+
+      const res = await client.api.users.create.$post({
+        json: createUserBody,
+      });
+
+      expect(res.status).toBe(201);
+
+      const json = await res.json();
+      expect(json).toMatchObject({
+        success: true,
+        data: expect.objectContaining({
+          id: "clxuser00000000000003",
+          name: "New User",
+          email: "newuser@example.com",
+        }),
+      });
+    });
+
+    it("should create a user and add to organization", async () => {
+      vi.mocked(prisma.user.findUnique)
+        .mockResolvedValueOnce(null) // email uniqueness check
+        .mockResolvedValueOnce(mockCreatedUser as never); // fetch after creation
+
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue(mockOrg as never);
+      vi.mocked(prisma.member.create).mockResolvedValue(mockMemberWithUser as never);
+
+      mockCreateUser.mockResolvedValue({
+        user: { id: "clxuser00000000000003", email: "newuser@example.com" },
+      });
+
+      const res = await client.api.users.create.$post({
+        json: {
+          ...createUserBody,
+          organizationId: "clxorg0000000000001",
+          orgRole: "member",
+        },
+      });
+
+      expect(res.status).toBe(201);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(prisma.member.create).toHaveBeenCalledWith({
+        data: {
+          organizationId: "clxorg0000000000001",
+          userId: "clxuser00000000000003",
+          role: "member",
+        },
+      });
+    });
+
+    it("should return 409 when email already exists", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+
+      const res = await client.api.users.create.$post({
+        json: createUserBody,
+      });
+
+      expect(res.status).toBe(409);
+
+      const json = await res.json();
+      expect(json.success).toBe(false);
+    });
+
+    it("should return 404 when specified organization does not exist", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
+
+      const res = await client.api.users.create.$post({
+        json: {
+          ...createUserBody,
+          organizationId: "clxorg9999999nonexist",
+        },
       });
 
       expect(res.status).toBe(404);

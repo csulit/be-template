@@ -247,3 +247,39 @@ export const DevTokenSchema = z
   .openapi("DevTokenBody");
 
 export type DevTokenInput = z.infer<typeof DevTokenSchema>;
+
+// ──────────────────────────────────────────────
+// Create user body schema
+// ──────────────────────────────────────────────
+
+export const CreateUserSchema = z
+  .object({
+    name: z.string().min(1).max(100).openapi({
+      description: "User's display name",
+      example: "Jane Doe",
+    }),
+    email: z.string().email().openapi({
+      description: "User's email address",
+      example: "jane@example.com",
+    }),
+    password: z.string().min(8).openapi({
+      description: "User's password (min 8 characters)",
+      example: "securepassword123",
+    }),
+    role: z.string().optional().openapi({
+      description: "User role (defaults to 'user')",
+      example: "user",
+    }),
+    organizationId: z.string().optional().openapi({
+      description:
+        "Organization ID to add the user to. Required for non-superadmin requesters (auto-set to their org). Optional for superadmin.",
+      example: "clx1234567890orgabc",
+    }),
+    orgRole: z.string().optional().openapi({
+      description: "Role within the organization (defaults to 'member')",
+      example: "member",
+    }),
+  })
+  .openapi("CreateUserBody");
+
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;

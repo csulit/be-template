@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { NotFound, Conflict, BadRequest } from "../../lib/errors.js";
+import { NotFound, Conflict, BadRequest, Forbidden } from "../../lib/errors.js";
 import { calculatePagination, getPrismaSkipTake } from "../../shared/utils/pagination.js";
 import { auth } from "../../lib/auth.js";
 import { env } from "../../env.js";
@@ -15,6 +15,7 @@ import type {
   SetOrgMemberRoleInput,
   TransferOwnershipInput,
   DevTokenInput,
+  CreateUserInput,
 } from "./users.validator.js";
 
 export class UsersService {
@@ -385,6 +386,96 @@ export class UsersService {
     }
 
     return updatedOrg;
+  }
+
+  // =========================================================================
+  // User Creation
+  // =========================================================================
+
+  async createUser(data: CreateUserInput, requesterId: string, requesterRole: string) {
+    // Authorization check
+    let organizationId: string | undefined = data.organizationId;
+
+    if (requesterRole !== "superadmin") {
+      // Non-superadmin: must be org admin or owner
+      const requesterMemberships = await prisma.member.findMany({
+        where: {
+          userId: requesterId,
+          role: { in: ["admin", "owner"] },
+        },
+      });
+
+      if (requesterMemberships.length === 0) {
+        throw Forbidden("Only superadmin or organization admin/owner can create users");
+      }
+
+      // Non-superadmin must create under their org — ignore any provided organizationId
+      // If user is admin/owner in multiple orgs, use the first one (they must specify via organizationId to pick)
+      if (organizationId) {
+        const hasAccess = requesterMemberships.some((m) => m.organizationId === organizationId);
+        if (!hasAccess) {
+          throw Forbidden("You can only create users in your own organization");
+        }
+      } else {
+        organizationId = requesterMemberships[0]!.organizationId;
+      }
+    }
+
+    // Check if user with this email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw Conflict("A user with this email already exists");
+    }
+
+    // Validate organization exists if specified
+    if (organizationId) {
+      const org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+      });
+
+      if (!org) {
+        throw NotFound("Organization not found");
+      }
+    }
+
+    // Create user via better-auth admin API
+    const result = await auth.api.createUser({
+      body: {
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        role: (data.role ?? "user") as "user" | "admin",
+      },
+    });
+
+    if (!result?.user) {
+      throw BadRequest("Failed to create user");
+    }
+
+    // Add user to organization if specified
+    if (organizationId) {
+      await prisma.member.create({
+        data: {
+          organizationId,
+          userId: result.user.id,
+          role: data.orgRole ?? "member",
+        },
+      });
+    }
+
+    // Return the full user from the database (consistent with other admin endpoints)
+    const user = await prisma.user.findUnique({
+      where: { id: result.user.id },
+    });
+
+    if (!user) {
+      throw NotFound("User not found after creation");
+    }
+
+    return user;
   }
 
   // =========================================================================
