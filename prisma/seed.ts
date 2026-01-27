@@ -33,7 +33,7 @@ async function main() {
 
   console.log("Starting database seed...\n");
 
-  // 1. Create or find admin user
+  // 1. Create or find superadmin user
   let user = await prisma.user.findUnique({
     where: { email: ADMIN_EMAIL },
   });
@@ -44,21 +44,21 @@ async function main() {
         name: ADMIN_NAME,
         email: ADMIN_EMAIL,
         emailVerified: true,
-        role: "admin",
+        role: "superadmin",
       },
     });
-    console.log(`Created admin user: ${user.email} (id: ${user.id})`);
+    console.log(`Created superadmin user: ${user.email} (id: ${user.id})`);
   } else {
-    console.log(`Admin user already exists: ${user.email} (id: ${user.id})`);
+    console.log(`Superadmin user already exists: ${user.email} (id: ${user.id})`);
   }
 
-  // 2. Ensure role is admin and email is verified
-  if (user.role !== "admin" || !user.emailVerified) {
+  // 2. Ensure role is superadmin and email is verified
+  if (user.role !== "superadmin" || !user.emailVerified) {
     await prisma.user.update({
       where: { id: user.id },
-      data: { role: "admin", emailVerified: true },
+      data: { role: "superadmin", emailVerified: true },
     });
-    console.log("Updated user role to admin");
+    console.log("Updated user role to superadmin");
   }
 
   // 3. Create credential account if not exists
@@ -123,10 +123,10 @@ async function main() {
   }
 
   console.log("\nSeed complete!");
-  console.log("\nAdmin credentials:");
+  console.log("\nSuperadmin credentials:");
   console.log(`  Email:    ${ADMIN_EMAIL}`);
   console.log(`  Password: ${adminPassword}`);
-  console.log(`  Role:     admin`);
+  console.log(`  Role:     superadmin`);
   console.log(`  Org:      ${ORG_NAME} (${ORG_SLUG})`);
 
   await prisma.$disconnect();

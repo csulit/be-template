@@ -14,11 +14,13 @@ export type OrgEnv = {
 type OrgSource =
   | { from: "query" }
   | { from: "body" }
+  | { from: "param"; paramName: string }
   | { from: "resource"; table: string; idParam?: string };
 
 type OrgGuardOptions = {
   source: OrgSource;
   roles?: string[];
+  allowGlobalRoles?: string[];
 };
 
 type PrismaDelegate = {
@@ -42,6 +44,10 @@ export function orgGuard(options: OrgGuardOptions) {
       case "body": {
         const body = await c.req.json();
         organizationId = body.organizationId;
+        break;
+      }
+      case "param": {
+        organizationId = c.req.param(options.source.paramName);
         break;
       }
       case "resource": {
@@ -76,6 +82,15 @@ export function orgGuard(options: OrgGuardOptions) {
 
     if (!organizationId) {
       throw BadRequest("Organization ID is required");
+    }
+
+    if (options.allowGlobalRoles && options.allowGlobalRoles.length > 0) {
+      const userRole = user.role ?? "user";
+      if (options.allowGlobalRoles.includes(userRole)) {
+        c.set("organizationId", organizationId);
+        await next();
+        return;
+      }
     }
 
     const member = await prisma.member.findFirst({
