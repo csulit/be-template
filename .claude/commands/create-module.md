@@ -53,6 +53,7 @@ Format:
 ### Step 1: Analyze Requirements
 
 Before spawning agents, analyze the requirements to understand:
+
 - What endpoints are needed (GET, POST, PUT, PATCH, DELETE)
 - What data structures are involved
 - What business logic is required
@@ -115,16 +116,18 @@ Route Exports:
 ### Step 2.5: Spawn Prisma Model Agent (Phase 0 - Conditional)
 
 **Only if the feature requires a NEW database entity.** Skip this step if:
+
 - The module uses existing models (e.g., User, Document)
 - The module is a utility/aggregation endpoint with no persistence
 
 Use the Task tool to spawn the `prisma-model-developer` agent:
 
-| Agent | Purpose |
-|-------|---------|
+| Agent                  | Purpose                                       |
+| ---------------------- | --------------------------------------------- |
 | prisma-model-developer | Creates Prisma model file in `prisma/models/` |
 
 **Include in the agent's prompt:**
+
 1. The Prisma model section from the naming contract
 2. The feature requirements (what fields/relations are needed)
 3. Any relation context (which existing models it relates to)
@@ -132,6 +135,7 @@ Use the Task tool to spawn the `prisma-model-developer` agent:
 **Wait for Phase 0 to complete** before proceeding. The Prisma model must exist before Phase 1 agents can reference it in DTOs.
 
 After the agent completes, run:
+
 ```bash
 pnpm db:generate
 ```
@@ -142,18 +146,20 @@ This regenerates the Prisma client so Phase 1/2 agents can use the new model typ
 
 Use the Task tool to spawn **3 agents in parallel** in a SINGLE message:
 
-| Agent | Purpose |
-|-------|---------|
-| dto-developer | Creates response DTOs and transformation functions |
-| validator-developer | Creates request body, params, and query validators |
-| file-explorer | Gathers existing patterns, examples, and context for Phase 2 |
+| Agent               | Purpose                                                      |
+| ------------------- | ------------------------------------------------------------ |
+| dto-developer       | Creates response DTOs and transformation functions           |
+| validator-developer | Creates request body, params, and query validators           |
+| file-explorer       | Gathers existing patterns, examples, and context for Phase 2 |
 
 **Include in schema agents' prompts:**
+
 1. The full naming contract from Step 2
 2. The parsed feature requirements
 3. The module context (new or existing)
 
 **Include in file-explorer's prompt:**
+
 ```
 Gather context for Phase 2 implementation agents. Find:
 
@@ -172,6 +178,7 @@ Return a structured context document that Phase 2 agents can use.
 Use TaskOutput to wait for ALL THREE agents to complete.
 
 **Why wait?** Subagents have isolated context windows. The api-developer and test-developer need:
+
 - The actual schema files to exist (from dto-developer and validator-developer)
 - Existing pattern context (from file-explorer)
 
@@ -179,12 +186,13 @@ Use TaskOutput to wait for ALL THREE agents to complete.
 
 After Phase 1 completes, spawn **2 implementation agents in parallel** in a SINGLE message:
 
-| Agent | Purpose |
-|-------|---------|
-| api-developer | Creates routes, controllers, and services |
-| test-developer | Creates unit and integration tests |
+| Agent          | Purpose                                   |
+| -------------- | ----------------------------------------- |
+| api-developer  | Creates routes, controllers, and services |
+| test-developer | Creates unit and integration tests        |
 
 **Include in each agent's prompt:**
+
 1. The full naming contract from Step 2
 2. Confirmation that schema files now exist with the contracted exports
 3. The parsed feature requirements
@@ -201,11 +209,12 @@ After all implementation code is written, spawn the `code-simplifier` agent to r
 
 Use the Task tool to spawn the `code-simplifier` agent:
 
-| Agent | Purpose |
-|-------|---------|
+| Agent           | Purpose                                                                |
+| --------------- | ---------------------------------------------------------------------- |
 | code-simplifier | Refines all module files for clarity, consistency, and maintainability |
 
 **Include in the agent's prompt:**
+
 1. The list of all files created by Phase 1 and Phase 2 agents (routes, controllers, services, DTOs, validators, tests)
 2. Instructions to read each file and apply simplification refinements
 3. Reminder to preserve all functionality - only improve how the code reads, not what it does
@@ -228,6 +237,7 @@ Spawn the `code-reviewer` agent to review all created files.
 ### Step 10: Route Registration
 
 If this is a new module, remind to register routes in `app.ts`:
+
 ```typescript
 import { <feature>Routes } from "./modules/<feature>/<feature>.route.js";
 
@@ -242,10 +252,12 @@ After completion, provide a summary:
 ## Module Creation Complete
 
 ### Naming Contract Used:
+
 - Feature: `<feature>` / `<Feature>`
 - Base path: `/api/<feature>`
 
 ### Files Created/Modified:
+
 - [ ] prisma/models/<feature>.prisma (if new DB entity)
 - [ ] src/modules/<feature>/<feature>.route.ts
 - [ ] src/modules/<feature>/<feature>.controller.ts
@@ -256,6 +268,7 @@ After completion, provide a summary:
 - [ ] tests/integration/routes/<feature>.test.ts
 
 ### Phase Execution:
+
 - Phase 0 (Prisma Model): prisma-model-developer ✅/⏭️ (skipped if using existing models)
 - Phase 1 (Schemas + Context): dto-developer ✅, validator-developer ✅, file-explorer ✅
 - Phase 2 (Implementation): api-developer ✅, test-developer ✅
@@ -263,12 +276,14 @@ After completion, provide a summary:
 - Code Review: ✅
 
 ### Verification:
+
 - Prisma Generate: ✅/❌ (if Phase 0 ran)
 - TypeScript: ✅/❌
 - Lint: ✅/❌
 - Tests: ✅/❌
 
 ### Next Steps:
+
 - Register routes in app.ts (if new module)
 - Run `pnpm db:migrate` to apply schema changes (if new model created)
 ```
@@ -276,22 +291,26 @@ After completion, provide a summary:
 ## Why Four Phases?
 
 Each subagent runs in its **own isolated context window**. They receive only:
+
 - Their agent markdown (system prompt)
 - The prompt you pass via Task tool
 - Basic environment info (working directory)
 
 They do **NOT** inherit:
+
 - The parent conversation's context
 - Knowledge of what sibling agents are creating
 - Existing file contents (unless they read them)
 
 By splitting into four phases:
+
 1. **Phase 0** creates the Prisma model (if needed), then runs `pnpm db:generate` to make types available
 2. **Phase 1** creates schemas (DTOs + Validators) with contracted names, while file-explorer gathers existing patterns in parallel
 3. **Phase 2** can import real schemas and use Prisma types because Phase 0/1 files now exist
 4. **Phase 3** refines all generated code for clarity, consistency, and maintainability before verification
 
 This eliminates:
+
 - Prisma type errors (model types exist before services reference them)
 - Import mismatches and naming conflicts between parallel agents
 - Redundant file exploration by Phase 2 agents (file-explorer does it once)

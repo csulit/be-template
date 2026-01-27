@@ -10,6 +10,7 @@ This skill guides the creation of Data Transfer Objects for API responses in thi
 ## DTO Structure
 
 Every DTO consists of:
+
 1. A Zod schema (for validation and OpenAPI documentation)
 2. TypeScript type export
 3. A `to*Dto()` transformation function
@@ -205,6 +206,7 @@ export const ErrorResponseSchema = z
 ## Checklist
 
 When creating a DTO:
+
 - [ ] Create Zod schema with `.openapi({ ref: "SchemaName" })`
 - [ ] Add `.openapi({ description, example })` to all fields
 - [ ] Export TypeScript type with `z.infer<>`
