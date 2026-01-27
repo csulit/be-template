@@ -28,6 +28,7 @@ import {
   SetOrgMemberRoleSchema,
   TransferOwnershipSchema,
   DevTokenSchema,
+  CreateUserSchema,
 } from "./users.validator.js";
 
 const app = new OpenAPIHono<AuthEnv>();
@@ -119,10 +120,10 @@ const updateProfileRoute = createRoute({
 const listUsersRoute = createRoute({
   method: "get",
   path: "/",
-  tags: ["Users (Admin)"],
+  tags: ["Users (Superadmin)"],
   summary: "List all users",
-  description: "Returns a paginated list of all users (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Returns a paginated list of all users (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     query: ListUsersQuerySchema,
   },
@@ -158,10 +159,10 @@ const listUsersRoute = createRoute({
 const getUserByIdRoute = createRoute({
   method: "get",
   path: "/{id}",
-  tags: ["Users (Admin)"],
+  tags: ["Users (Superadmin)"],
   summary: "Get user by ID",
-  description: "Returns a single user by ID (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Returns a single user by ID (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     params: UserIdParamSchema,
   },
@@ -205,10 +206,10 @@ const getUserByIdRoute = createRoute({
 const adminUpdateUserRoute = createRoute({
   method: "patch",
   path: "/{id}",
-  tags: ["Users (Admin)"],
+  tags: ["Users (Superadmin)"],
   summary: "Admin update user",
-  description: "Updates a user's details (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Updates a user's details (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     params: UserIdParamSchema,
     body: {
@@ -259,10 +260,10 @@ const adminUpdateUserRoute = createRoute({
 const banUserRoute = createRoute({
   method: "post",
   path: "/{id}/ban",
-  tags: ["Users (Admin)"],
+  tags: ["Users (Superadmin)"],
   summary: "Ban user",
-  description: "Bans a user (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Bans a user (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     params: UserIdParamSchema,
     body: {
@@ -313,10 +314,10 @@ const banUserRoute = createRoute({
 const unbanUserRoute = createRoute({
   method: "post",
   path: "/{id}/unban",
-  tags: ["Users (Admin)"],
+  tags: ["Users (Superadmin)"],
   summary: "Unban user",
-  description: "Unbans a user (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Unbans a user (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     params: UserIdParamSchema,
   },
@@ -360,12 +361,16 @@ const unbanUserRoute = createRoute({
 const listOrgMembersRoute = createRoute({
   method: "get",
   path: "/org-members",
-  tags: ["Users (Admin)"],
+  tags: ["Organization Members"],
   summary: "List organization members",
-  description: "Returns a paginated list of organization members",
+  description: "Returns a paginated list of organization members (org admin/owner or superadmin)",
   middleware: [
     authMiddleware,
-    orgGuard({ source: { from: "query" }, roles: ["admin", "owner"] }),
+    orgGuard({
+      source: { from: "query" },
+      roles: ["admin", "owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
   ] as const,
   request: {
     query: ListOrgMembersQuerySchema,
@@ -404,10 +409,10 @@ const listOrgMembersRoute = createRoute({
 const listOrgsRoute = createRoute({
   method: "get",
   path: "/orgs",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations (Superadmin)"],
   summary: "List all organizations",
-  description: "Returns a paginated list of all organizations (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Returns a paginated list of all organizations (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     query: ListOrgsQuerySchema,
   },
@@ -443,10 +448,16 @@ const listOrgsRoute = createRoute({
 const getOrgByIdRoute = createRoute({
   method: "get",
   path: "/orgs/{orgId}",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Get organization by ID",
-  description: "Returns a single organization by ID (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Returns a single organization by ID (org member or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgIdParamSchema,
   },
@@ -490,10 +501,10 @@ const getOrgByIdRoute = createRoute({
 const createOrgRoute = createRoute({
   method: "post",
   path: "/orgs",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations (Superadmin)"],
   summary: "Create organization",
-  description: "Creates a new organization (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Creates a new organization (superadmin only)",
+  middleware: [authMiddleware, roleGuard("superadmin")] as const,
   request: {
     body: {
       content: {
@@ -543,10 +554,17 @@ const createOrgRoute = createRoute({
 const updateOrgRoute = createRoute({
   method: "patch",
   path: "/orgs/{orgId}",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Update organization",
-  description: "Updates an organization (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Updates an organization (org admin/owner or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      roles: ["admin", "owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgIdParamSchema,
     body: {
@@ -605,10 +623,17 @@ const updateOrgRoute = createRoute({
 const deleteOrgRoute = createRoute({
   method: "delete",
   path: "/orgs/{orgId}",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Delete organization",
-  description: "Deletes an organization and all its members (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Deletes an organization and all its members (org owner or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      roles: ["owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgIdParamSchema,
   },
@@ -652,10 +677,17 @@ const deleteOrgRoute = createRoute({
 const setOrgMemberRoleRoute = createRoute({
   method: "patch",
   path: "/orgs/{orgId}/members/{memberId}/role",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Set organization member role",
-  description: "Sets a member's role within the organization (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Sets a member's role within the organization (org admin/owner or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      roles: ["admin", "owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgMemberParamSchema,
     body: {
@@ -706,10 +738,17 @@ const setOrgMemberRoleRoute = createRoute({
 const removeOrgMemberRoute = createRoute({
   method: "delete",
   path: "/orgs/{orgId}/members/{memberId}",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Remove organization member",
-  description: "Removes a member from the organization (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description: "Removes a member from the organization (org admin/owner or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      roles: ["admin", "owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgMemberParamSchema,
   },
@@ -753,10 +792,18 @@ const removeOrgMemberRoute = createRoute({
 const transferOrgOwnershipRoute = createRoute({
   method: "post",
   path: "/orgs/{orgId}/transfer-ownership",
-  tags: ["Organizations (Admin)"],
+  tags: ["Organizations"],
   summary: "Transfer organization ownership",
-  description: "Transfers ownership of the organization to another member (admin only)",
-  middleware: [authMiddleware, roleGuard("admin")] as const,
+  description:
+    "Transfers ownership of the organization to another member (org owner or superadmin)",
+  middleware: [
+    authMiddleware,
+    orgGuard({
+      source: { from: "param", paramName: "orgId" },
+      roles: ["owner"],
+      allowGlobalRoles: ["superadmin"],
+    }),
+  ] as const,
   request: {
     params: OrgIdParamSchema,
     body: {
@@ -794,6 +841,78 @@ const transferOrgOwnershipRoute = createRoute({
     },
     404: {
       description: "Organization or member not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+// ─── Create User Route ──────────────────────────────────────────────────────
+
+// POST /api/users/create
+const createUserRoute = createRoute({
+  method: "post",
+  path: "/create",
+  tags: ["Users"],
+  summary: "Create a new user",
+  description:
+    "Creates a new user account. Superadmin can create users with any role and optionally assign to an organization. Organization admin/owner can only create users under their own organization.",
+  middleware: [authMiddleware] as const,
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: CreateUserSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "User created successfully",
+      content: {
+        "application/json": {
+          schema: UserAdminResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Invalid input or failed to create user",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: "Forbidden - insufficient permissions",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Organization not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: "User with this email already exists",
       content: {
         "application/json": {
           schema: ErrorResponseSchema,
@@ -843,6 +962,7 @@ const devTokenRoute = createRoute({
 });
 
 // Export route types for controller type safety
+export type CreateUserRoute = typeof createUserRoute;
 export type DevTokenRoute = typeof devTokenRoute;
 export type GetProfileRoute = typeof getProfileRoute;
 export type UpdateProfileRoute = typeof updateProfileRoute;
@@ -862,11 +982,12 @@ export type RemoveOrgMemberRoute = typeof removeOrgMemberRoute;
 export type TransferOrgOwnershipRoute = typeof transferOrgOwnershipRoute;
 
 // Register routes - static paths must come before parameterized paths
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-app.openapi(devTokenRoute, usersController.generateDevToken as any);
+// @ts-expect-error devTokenRoute has no auth middleware, causing env type mismatch
+app.openapi(devTokenRoute, usersController.generateDevToken);
 app.openapi(getProfileRoute, usersController.getProfile);
 app.openapi(updateProfileRoute, usersController.updateProfile);
 app.openapi(listUsersRoute, usersController.listUsers);
+app.openapi(createUserRoute, usersController.createUser);
 app.openapi(listOrgMembersRoute, usersController.listOrgMembers);
 
 // Organization admin routes - static paths before parameterized /{id}

@@ -15,24 +15,27 @@ vi.mock("../../../src/db.js", () => ({
 import { orgGuard } from "../../../src/middleware/org.middleware.js";
 import { prisma } from "../../../src/db.js";
 
-function createTestApp(options: Parameters<typeof orgGuard>[0]) {
+function createTestApp(options: Parameters<typeof orgGuard>[0], userRole: string = "user") {
   const app = new Hono();
 
   // Simulate authMiddleware by setting user context
   app.use("*", async (c, next) => {
-    c.set("user", { id: "user_1", email: "test@example.com", role: "user" });
+    c.set("user", { id: "user_1", email: "test@example.com", role: userRole });
     c.set("session", { id: "session_1" });
     await next();
   });
 
   if (options.source.from === "resource") {
     app.use("/test/:id", orgGuard(options));
+  } else if (options.source.from === "param") {
+    app.use("/org/:orgId", orgGuard(options));
   } else {
     app.use("*", orgGuard(options));
   }
 
   app.get("/test", (c) => c.json({ ok: true }));
   app.get("/test/:id", (c) => c.json({ ok: true }));
+  app.get("/org/:orgId", (c) => c.json({ ok: true }));
   app.post("/test", async (c) => c.json({ ok: true }));
 
   return app;
@@ -208,6 +211,96 @@ describe("orgGuard middleware", () => {
         where: { id: "role_1" },
         select: { organizationId: true },
       });
+    });
+  });
+
+  // ==========================================================================
+  // Param source
+  // ==========================================================================
+
+  describe("source: param", () => {
+    it("should pass when orgId extracted from URL param and user is a member", async () => {
+      vi.mocked(prisma.member.findFirst).mockResolvedValue(mockMember as never);
+
+      const app = createTestApp({
+        source: { from: "param", paramName: "orgId" },
+      });
+      const res = await app.request("/org/org_1");
+
+      expect(res.status).toBe(200);
+      expect(prisma.member.findFirst).toHaveBeenCalledWith({
+        where: { userId: "user_1", organizationId: "org_1" },
+      });
+    });
+
+    it("should return 400 when param is missing/undefined", async () => {
+      const app = new Hono();
+      app.use("*", async (c, next) => {
+        c.set("user", { id: "user_1", email: "test@example.com", role: "user" });
+        c.set("session", { id: "session_1" });
+        await next();
+      });
+      // Route without :orgId param — orgId will be undefined
+      app.use("/test", orgGuard({ source: { from: "param", paramName: "orgId" } }));
+      app.get("/test", (c) => c.json({ ok: true }));
+
+      const res = await app.request("/test");
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // ==========================================================================
+  // allowGlobalRoles bypass
+  // ==========================================================================
+
+  describe("allowGlobalRoles bypass", () => {
+    it("should bypass membership check when user has allowed global role", async () => {
+      const app = createTestApp(
+        {
+          source: { from: "query" },
+          allowGlobalRoles: ["superadmin"],
+        },
+        "superadmin"
+      );
+      const res = await app.request("/test?organizationId=org_1");
+
+      expect(res.status).toBe(200);
+      expect(prisma.member.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("should fall through to membership check when user lacks allowed global role", async () => {
+      vi.mocked(prisma.member.findFirst).mockResolvedValue(mockMember as never);
+
+      const app = createTestApp(
+        {
+          source: { from: "query" },
+          allowGlobalRoles: ["superadmin"],
+        },
+        "user"
+      );
+      const res = await app.request("/test?organizationId=org_1");
+
+      expect(res.status).toBe(200);
+      expect(prisma.member.findFirst).toHaveBeenCalledWith({
+        where: { userId: "user_1", organizationId: "org_1" },
+      });
+    });
+
+    it("should reject non-member user without allowed global role", async () => {
+      vi.mocked(prisma.member.findFirst).mockResolvedValue(null);
+
+      const app = createTestApp(
+        {
+          source: { from: "query" },
+          allowGlobalRoles: ["superadmin"],
+        },
+        "admin"
+      );
+      const res = await app.request("/test?organizationId=org_1");
+
+      expect(res.status).toBe(403);
+      expect(prisma.member.findFirst).toHaveBeenCalled();
     });
   });
 

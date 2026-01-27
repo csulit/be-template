@@ -2,6 +2,7 @@ import type { RouteHandler } from "@hono/zod-openapi";
 import { usersService } from "./users.service.js";
 import { toUserProfileWithOrgsDto } from "./users.dto.js";
 import type {
+  CreateUserRoute,
   DevTokenRoute,
   GetProfileRoute,
   UpdateProfileRoute,
@@ -131,6 +132,20 @@ export const usersController = {
 
     return c.json(result, 200);
   }) satisfies RouteHandler<ListOrgMembersRoute>,
+
+  createUser: (async (c) => {
+    const user = c.get("user");
+    const body = c.req.valid("json");
+    const created = await usersService.createUser(body, user.id, user.role ?? "user");
+
+    return c.json(
+      {
+        success: true as const,
+        data: created,
+      },
+      201
+    );
+  }) satisfies RouteHandler<CreateUserRoute>,
 
   // ─── Organization Admin Handlers ────────────────────────────────────────────
 
