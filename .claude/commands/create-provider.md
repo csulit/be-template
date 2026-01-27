@@ -28,6 +28,7 @@ Parse the arguments by splitting on `|`:
 ### Step 1: Analyze Requirements
 
 Before spawning agents, analyze the requirements to understand:
+
 - What methods the provider interface needs
 - What options/parameters each method requires
 - What return types each method should have
@@ -77,11 +78,12 @@ Import Style:
 
 Use the Task tool to spawn the `file-explorer` agent (on `haiku` for speed):
 
-| Agent | Purpose |
-|-------|---------|
+| Agent         | Purpose                                         |
+| ------------- | ----------------------------------------------- |
 | file-explorer | Gathers existing provider patterns and examples |
 
 **Include in file-explorer's prompt:**
+
 ```
 Gather context for provider implementation. Find and read:
 
@@ -109,18 +111,19 @@ Use TaskOutput to wait for the file-explorer to complete.
 
 After Phase 1 completes, spawn the `general-purpose` agent to create the provider file:
 
-| Agent | Purpose |
-|-------|---------|
+| Agent           | Purpose                                                  |
+| --------------- | -------------------------------------------------------- |
 | general-purpose | Creates the provider file following established patterns |
 
 **Include in the agent's prompt:**
+
 1. The full naming contract from Step 2
 2. The parsed provider requirements (methods, options, return types)
 3. The production service context (what SDK to stub)
 4. **The context document from file-explorer** (paste the patterns found)
 5. Explicit instructions to follow the established pattern:
 
-```
+````
 Create the provider file at the path specified in the naming contract.
 Follow these patterns EXACTLY as found in existing providers:
 
@@ -142,14 +145,16 @@ STRUCTURE (in this order):
      env.<ENV_VAR> && env.<ENV_VAR>
        ? new <Production><Provider>Provider()
        : new Console<Provider>Provider();
-   ```
+````
 
 IMPORTANT:
+
 - Do NOT add barrel exports or index files
 - Do NOT modify any existing files
 - Match the exact code style of existing providers (spacing, comments, etc.)
 - Use `export interface` for all interfaces (they are consumed by other files)
-```
+
+````
 
 ### Step 6: Wait for Phase 2
 
@@ -247,27 +252,31 @@ After completion, provide a summary:
 - Implement the production provider when SDK credentials are available
 - Add environment variables to `.env.example` if needed
 - Import and use via: `import { <provider>Provider } from "@/providers/<provider>.provider.js";`
-```
+````
 
 ## Why Four Phases?
 
 Each subagent runs in its **own isolated context window**. They receive only:
+
 - Their agent markdown (system prompt)
 - The prompt you pass via Task tool
 - Basic environment info (working directory)
 
 They do **NOT** inherit:
+
 - The parent conversation's context
 - Knowledge of what sibling agents are creating
 - Existing file contents (unless they read them)
 
 By splitting into four phases:
+
 1. **Phase 1** gathers existing provider patterns so the implementation matches the codebase style
 2. **Phase 2** creates the provider file using gathered patterns and the naming contract
 3. **Phase 3** creates tests that import from the now-existing provider file
 4. **Phase 4** refines all code for consistency before verification
 
 This eliminates:
+
 - Style drift from existing providers
 - Import errors in tests (provider file exists before tests are written)
 - Inconsistent code across generated files
@@ -291,6 +300,7 @@ All providers in this codebase follow the **Strategy Pattern** with environment-
 ```
 
 Key characteristics:
+
 - **Single file** per provider: `src/providers/<name>.provider.ts`
 - **Interface-first**: All implementations satisfy the same interface
 - **Dev-friendly**: Console/Local implementations work without external services

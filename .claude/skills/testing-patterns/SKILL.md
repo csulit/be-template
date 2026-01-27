@@ -211,6 +211,7 @@ describe("FeatureService", () => {
 ## Mocking Patterns
 
 ### Mock External Services
+
 ```typescript
 vi.mock("@/providers/email", () => ({
   emailProvider: {
@@ -220,6 +221,7 @@ vi.mock("@/providers/email", () => ({
 ```
 
 ### Mock Auth Middleware
+
 ```typescript
 // For protected routes in integration tests
 vi.mock("@/middleware/auth.middleware", () => ({
@@ -228,6 +230,7 @@ vi.mock("@/middleware/auth.middleware", () => ({
 ```
 
 ### Spy on Methods
+
 ```typescript
 const createSpy = vi.spyOn(featureService, "create");
 createSpy.mockResolvedValue(mockFeature);
@@ -239,6 +242,7 @@ expect(createSpy).toHaveBeenCalledWith(expectedData);
 ## Test Helpers
 
 ### Test Client Factory
+
 ```typescript
 // tests/helpers/test-client.ts
 import { testClient } from "hono/testing";
@@ -251,6 +255,7 @@ export function createTestClient() {
 ```
 
 ### Mock Data Factories
+
 ```typescript
 // tests/helpers/factories.ts
 export function createMockFeature(overrides = {}) {
@@ -287,6 +292,7 @@ pnpm test:run -- --coverage
 ## Checklist
 
 When writing tests:
+
 - [ ] Use `describe` blocks to organize by class/route
 - [ ] Use nested `describe` for methods/endpoints
 - [ ] Clear mocks in `beforeEach` with `vi.clearAllMocks()`
