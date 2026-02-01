@@ -5,6 +5,7 @@ import {
   runWorkflow,
   type PromptEnhancerInput,
 } from "../../modules/talent-market-search/ai-agents/tms.js";
+import { talentMarketSearchService } from "../../modules/talent-market-search/talent-market-search.service.js";
 import {
   TmsMarketScopeJobDataSchema,
   type TmsMarketScopeJobData,
@@ -19,6 +20,10 @@ import {
   PROCESSING_LOCK_TIMEOUT_MS,
   LOG_PREFIX,
   SCHEDULER_LOG_PREFIX,
+  WORKFLOW_MAX_RETRIES,
+  WORKFLOW_INITIAL_DELAY_MS,
+  WORKFLOW_MAX_DELAY_MS,
+  WORKFLOW_JITTER_FACTOR,
 } from "./tms-market-scope.constant.js";
 import type { JobResult } from "../types.js";
 
@@ -50,6 +55,62 @@ function buildStructuredInput(record: MarketScopeRecord): PromptEnhancerInput {
     experienceScope: record.experienceScope || undefined,
     clientName: record.clientName,
   };
+}
+
+/**
+ * Checks if an error is a retryable JSON parsing error from AI output.
+ * These errors occur when the AI model returns malformed JSON with invalid Unicode escapes.
+ * @internal Exported for testing purposes
+ */
+export function isRetryableJsonError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("bad unicode escape") ||
+    message.includes("invalid output type") ||
+    message.includes("unexpected token") ||
+    message.includes("json at position")
+  );
+}
+
+/**
+ * Executes the AI workflow with retry logic for transient JSON parsing errors.
+ * Uses exponential backoff with jitter to handle AI output inconsistencies.
+ */
+async function runWorkflowWithRetry(
+  structuredInput: PromptEnhancerInput,
+  recordId: string
+): Promise<Awaited<ReturnType<typeof runWorkflow>>> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= WORKFLOW_MAX_RETRIES; attempt++) {
+    try {
+      return await runWorkflow({ structured_input: structuredInput });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (!isRetryableJsonError(error) || attempt === WORKFLOW_MAX_RETRIES) {
+        throw lastError;
+      }
+
+      // Exponential backoff with jitter
+      const baseDelay = Math.min(
+        WORKFLOW_INITIAL_DELAY_MS * Math.pow(2, attempt - 1),
+        WORKFLOW_MAX_DELAY_MS
+      );
+      const jitter = Math.random() * WORKFLOW_JITTER_FACTOR * baseDelay;
+      const delay = Math.round(baseDelay + jitter);
+
+      console.warn(
+        `${LOG_PREFIX} Record ${recordId} attempt ${attempt}/${WORKFLOW_MAX_RETRIES} failed with JSON error: ${lastError.message}`
+      );
+      console.warn(`${LOG_PREFIX} Retrying in ${delay}ms...`);
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError ?? new Error("Workflow failed after retries");
 }
 
 async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult> {
@@ -97,8 +158,14 @@ async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult
 
     await job.updateProgress(30);
 
-    // Use structured input to enable prompt enhancement
-    const result = await runWorkflow({ structured_input: structuredInput });
+    // Use structured input with retry logic for transient AI output errors
+    const result = await runWorkflowWithRetry(structuredInput, recordId);
+
+    await job.updateProgress(70);
+
+    // Save workflow result to TmsWorkflowResult table for structured querying
+    await talentMarketSearchService.saveWorkflowResult(recordId, result);
+    console.log(`${LOG_PREFIX} Saved workflow result for record ${recordId}`);
 
     await job.updateProgress(90);
 
@@ -119,16 +186,42 @@ async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult
     return { success: true, data: result };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const maxAttempts = job.opts.attempts ?? 1;
+    // BullMQ increments attemptsMade AFTER the attempt completes, so on the current
+    // attempt, attemptsMade reflects completed attempts (0-indexed). We add 1 to
+    // represent the current attempt that just failed.
+    const isPermanentFailure = job.attemptsMade + 1 >= maxAttempts;
 
-    await prisma.tmsMarketScopeSearch.update({
-      where: { id: recordId },
-      data: {
-        processingAt: null,
-        error: errorMessage,
-      },
-    });
+    if (isPermanentFailure) {
+      // Mark as processed with error to prevent scheduler from re-dispatching
+      await prisma.tmsMarketScopeSearch.update({
+        where: { id: recordId },
+        data: {
+          isProcessed: true,
+          processedAt: new Date(),
+          processingAt: null,
+          error: errorMessage,
+        },
+      });
+      console.error(
+        `${LOG_PREFIX} Record ${recordId} permanently failed after ${job.attemptsMade} attempts:`,
+        errorMessage
+      );
+    } else {
+      // Keep processingAt set so scheduler doesn't re-dispatch during BullMQ retry window
+      // Only update the error message for debugging
+      await prisma.tmsMarketScopeSearch.update({
+        where: { id: recordId },
+        data: {
+          error: errorMessage,
+        },
+      });
+      console.warn(
+        `${LOG_PREFIX} Record ${recordId} failed attempt ${job.attemptsMade}/${maxAttempts}:`,
+        errorMessage
+      );
+    }
 
-    console.error(`${LOG_PREFIX} Record ${recordId} failed:`, errorMessage);
     throw error;
   }
 }
