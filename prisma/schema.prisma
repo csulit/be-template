@@ -45,6 +45,8 @@ model User {
   members               Member[]
   invitations           Invitation[]
   reimbursementUsers    ReimbursementUser[]
+  tmsUsers              TmsUser[]
+  tmsMarketScopeSearches TmsMarketScopeSearch[]
 
   @@map("users")
 }
@@ -177,6 +179,8 @@ model Organization {
   reimbursementTypeCategories ReimbursementTypeCategory[]
   reimbursementUsers          ReimbursementUser[]
   reimbursementTypes          ReimbursementType[]
+  tmsUsers                    TmsUser[]
+  tmsMarketScopeSearches      TmsMarketScopeSearch[]
 
   @@unique([slug])
   @@map("organization")
