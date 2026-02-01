@@ -11,6 +11,12 @@ import {
   TALENT_ACQUISITION_RESEARCHER_INSTRUCTIONS,
   LOCATION_REPORT_AGGREGATOR_INSTRUCTIONS,
 } from "./tms.constant";
+import {
+  enhancePrompt,
+  formatResearchBriefForResearcher,
+  type PromptEnhancerInput,
+  type EnhancedResearchPrompt,
+} from "./prompt-enhancer";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod Schemas
@@ -71,6 +77,9 @@ const LocationReportAggregatorSchema = z.object({
 type MarketScopingReport = z.infer<typeof TalentAcquisitionSpecialistResearcherSchema>;
 type AggregatedLocationReport = z.infer<typeof LocationReportAggregatorSchema>;
 
+// Re-export types for external use
+export type { PromptEnhancerInput, EnhancedResearchPrompt };
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Agent Definitions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,27 +105,71 @@ const locationReportAggregator = new Agent({
 // Workflow Execution
 // ─────────────────────────────────────────────────────────────────────────────
 
-type WorkflowInput = { input_as_text: string };
+/**
+ * Legacy input format (plain text) - kept for backward compatibility
+ */
+type LegacyWorkflowInput = { input_as_text: string };
 
-export const runWorkflow = async (workflow: WorkflowInput) => {
+/**
+ * Structured input format - preferred for new implementations
+ * Uses the prompt enhancer agent to generate optimized research briefs
+ */
+type StructuredWorkflowInput = { structured_input: PromptEnhancerInput };
+
+/**
+ * Union type for workflow input - supports both legacy and structured formats
+ */
+type WorkflowInput = LegacyWorkflowInput | StructuredWorkflowInput;
+
+/**
+ * Type guard to check if input is structured format
+ */
+function isStructuredInput(input: WorkflowInput): input is StructuredWorkflowInput {
+  return "structured_input" in input;
+}
+
+/**
+ * Workflow state including the enhanced prompt from the prompt enhancer
+ */
+interface WorkflowState {
+  enhanced_prompt: EnhancedResearchPrompt | null;
+  market_scoping_report: MarketScopingReport | null;
+  split_reports: SplitResult | null;
+  aggregated_location_report: AggregatedLocationReport | null;
+}
+
+export const runWorkflow = async (workflow: WorkflowInput): Promise<WorkflowState> => {
   return await withTrace(WORKFLOW.NAME, async () => {
-    const state: {
-      market_scoping_report: MarketScopingReport | null;
-      split_reports: SplitResult | null;
-      aggregated_location_report: AggregatedLocationReport | null;
-    } = {
+    const state: WorkflowState = {
+      enhanced_prompt: null,
       market_scoping_report: null,
       split_reports: null,
       aggregated_location_report: null,
     };
 
+    let researchBrief: string;
+
+    // ─── Step 1: Prompt Enhancement ───────────────────────────────────────────
+    // If structured input is provided, run the prompt enhancer first
+    if (isStructuredInput(workflow)) {
+      console.log("[TMS Workflow] Running prompt enhancer agent...");
+      const enhancedPrompt = await enhancePrompt(workflow.structured_input);
+      state.enhanced_prompt = enhancedPrompt;
+      researchBrief = formatResearchBriefForResearcher(enhancedPrompt);
+      console.log("[TMS Workflow] Prompt enhancement complete");
+    } else {
+      // Legacy mode: use the raw text directly
+      researchBrief = workflow.input_as_text;
+    }
+
+    // ─── Step 2: Market Research ──────────────────────────────────────────────
     const conversationHistory: AgentInputItem[] = [
       {
         role: "user",
         content: [
           {
             type: "input_text",
-            text: workflow.input_as_text,
+            text: researchBrief,
           },
         ],
       },
@@ -129,6 +182,7 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
       },
     });
 
+    console.log("[TMS Workflow] Running researcher agent...");
     const result = await runner.run(talentAcquisitionSpecialistResearcher, [
       ...conversationHistory,
     ]);
@@ -138,8 +192,11 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
     }
 
     state.market_scoping_report = result.finalOutput;
+    console.log("[TMS Workflow] Research complete");
 
-    if (result.finalOutput.is_multi_location == true) {
+    // ─── Step 3: Multi-Location Aggregation (if applicable) ───────────────────
+    if (result.finalOutput.is_multi_location === true) {
+      console.log("[TMS Workflow] Multi-location detected, running aggregator...");
       const splitResult = splitReports(result.finalOutput as MultiLocationSalaryReport);
 
       state.split_reports = splitResult;
@@ -161,6 +218,7 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
       }
 
       state.aggregated_location_report = aggregatedResult.finalOutput;
+      console.log("[TMS Workflow] Aggregation complete");
     }
 
     return state;
