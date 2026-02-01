@@ -28,3 +28,9 @@ export const SCHEDULER_JOB_OPTIONS = {
 // Logging
 export const LOG_PREFIX = "[tms-market-scope]";
 export const SCHEDULER_LOG_PREFIX = "[tms-market-scope-scheduler]";
+
+// Workflow Retry Configuration
+export const WORKFLOW_MAX_RETRIES = 3;
+export const WORKFLOW_INITIAL_DELAY_MS = 1000;
+export const WORKFLOW_MAX_DELAY_MS = 10000;
+export const WORKFLOW_JITTER_FACTOR = 0.3;

@@ -217,13 +217,55 @@ Always include exchange rate in market_notes.
 
 ---
 
+## MULTI-LOCATION COMPLETENESS (CRITICAL)
+
+When is_multi_location is true, you MUST include ALL locations from locations_compared in EVERY salary field.
+
+**Before returning your response, verify this checklist:**
+
+1. Every location in locations_compared appears in base_currency_min
+2. Every location in locations_compared appears in base_currency_mid
+3. Every location in locations_compared appears in base_currency_max
+4. Every location in locations_compared appears in int_currency_min
+5. Every location in locations_compared appears in int_currency_mid
+6. Every location in locations_compared appears in int_currency_max
+7. Above checks pass for ALL 5 experience tiers (1-3, 3-5, 5-7, 7-10, 10-15)
+
+**Example (3 locations = 3 entries per field):**
+
+CORRECT - all 3 locations present:
+  locations_compared: ["Makati", "BGC Taguig", "Ortigas"]
+  base_currency_min: "Makati: P35,000; BGC Taguig: P38,500; Ortigas: P32,500"
+
+WRONG - missing Ortigas:
+  base_currency_min: "Makati: P35,000; BGC Taguig: P38,500"
+
+**If data is unavailable for a location:**
+- Use estimates based on regional differentials (note in market_notes)
+- NEVER omit the location - always provide a value
+
+---
+
 ## DO NOT
 
 - Fabricate salary figures without search validation
 - Use data older than 2023 without noting it
 - Ignore search results that contradict assumptions
 - Search for exchange rate if user already provided it
-- Modify experience_range or experience_label formats`;
+- Modify experience_range or experience_label formats
+
+---
+
+## JSON OUTPUT SAFETY (CRITICAL)
+
+Your output MUST be valid JSON. Follow these rules to avoid parsing errors:
+
+1. **Escape backslashes**: Use \\\\ for literal backslashes (e.g., file paths)
+2. **No raw Unicode escapes**: Write currency symbols directly (₱, $, €) instead of \\uXXXX codes
+3. **Escape quotes in strings**: Use \\" for quotes inside string values
+4. **No control characters**: Avoid tabs, newlines inside strings (use spaces instead)
+5. **ASCII-safe special chars**: If unsure, spell out symbols (e.g., "PHP" instead of "₱")
+6. **Test your JSON mentally**: Ensure all brackets and quotes are balanced`;
 
 /**
  * Instructions for the Location Report Aggregator agent.
@@ -288,4 +330,15 @@ Sum all location pools.
 1. Exchange rate
 2. Locations analyzed
 3. Averaging methodology
-4. Cost comparison with percentages`;
+4. Cost comparison with percentages
+
+---
+
+## JSON OUTPUT SAFETY (CRITICAL)
+
+Your output MUST be valid JSON. Follow these rules:
+
+1. **Escape backslashes**: Use \\\\ for literal backslashes
+2. **No raw Unicode escapes**: Write currency symbols directly (₱, $, €)
+3. **Escape quotes in strings**: Use \\" for quotes inside string values
+4. **No control characters**: Avoid tabs, newlines inside strings`;

@@ -23,7 +23,10 @@ const listMarketScopeSearchesRoute = createRoute({
   summary: "List market scope searches",
   description:
     "Returns a paginated list of market scope searches. Optionally filter by organization.",
-  middleware: [authMiddleware, orgGuard({ source: { from: "query" } })] as const,
+  middleware: [
+    authMiddleware,
+    orgGuard({ source: { from: "query" }, allowGlobalRoles: ["superadmin"] }),
+  ] as const,
   request: {
     query: ListTmsMarketScopeSearchQuerySchema,
   },
@@ -61,7 +64,10 @@ const createMarketScopeSearchRoute = createRoute({
   tags: ["TMS Market Scope Search"],
   summary: "Create market scope search",
   description: "Creates a new market scope search with the provided parameters.",
-  middleware: [authMiddleware, orgGuard({ source: { from: "body" } })] as const,
+  middleware: [
+    authMiddleware,
+    orgGuard({ source: { from: "body" }, allowGlobalRoles: ["superadmin"] }),
+  ] as const,
   request: {
     body: {
       content: {
@@ -77,6 +83,14 @@ const createMarketScopeSearchRoute = createRoute({
       content: {
         "application/json": {
           schema: TmsMarketScopeSearchResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: "Validation error (e.g., organization does not exist)",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
         },
       },
     },
@@ -108,7 +122,10 @@ const getWorkflowResultRoute = createRoute({
     "Returns the AI workflow result (enhanced prompt, market scoping report, split reports, aggregated report) for a specific market scope search.",
   middleware: [
     authMiddleware,
-    orgGuard({ source: { from: "resource", table: "tmsMarketScopeSearch" } }),
+    orgGuard({
+      source: { from: "resource", table: "tmsMarketScopeSearch" },
+      allowGlobalRoles: ["superadmin"],
+    }),
   ] as const,
   request: {
     params: TmsMarketScopeSearchParamsSchema,

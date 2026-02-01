@@ -144,10 +144,18 @@ function parseLocationMap(s: string | null | undefined): Record<string, string> 
 
 /**
  * Extracts location percentages from market notes.
+ * Supports multiple formats:
+ * - "Makati 45,000 / 30%" (with talent count and slash)
+ * - "Makati ~40%" (with tilde prefix)
+ * - "Makati 40%" (simple percentage)
  *
  * @example
  * extractLocationPercents("Makati 45,000 / 30%; BGC Taguig 35,000 / 25%")
  * // Returns: { "Makati": 30, "BGC Taguig": 25 }
+ *
+ * @example
+ * extractLocationPercents("Makati ~40%, BGC Taguig ~35%")
+ * // Returns: { "Makati": 40, "BGC Taguig": 35 }
  */
 function extractLocationPercents(marketNotes: string | null | undefined): Record<string, number> {
   const result: Record<string, number> = {};
@@ -156,22 +164,30 @@ function extractLocationPercents(marketNotes: string | null | undefined): Record
     return result;
   }
 
-  // Matches patterns like "Makati 45,000 / 30%" or "BGC Taguig 35000/25.5%"
-  // Note: hyphen at end of character class doesn't need escaping
-  const percentRegex = /([A-Za-z][A-Za-z\s-]*?)\s*[\d,]+\s*\/\s*(\d+(?:\.\d+)?)\s*%/g;
+  // Pattern 1: "Makati 45,000 / 30%" or "BGC Taguig 35000/25.5%" (with talent count)
+  const patternWithCount = /([A-Za-z][A-Za-z\s-]*?)\s*[\d,]+\s*\/\s*(\d+(?:\.\d+)?)\s*%/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = percentRegex.exec(marketNotes)) !== null) {
-    const locationMatch = match[1];
-    const percentMatch = match[2];
+  // Pattern 2: "Makati ~40%" or "Makati 40%" (simple percentage with optional tilde)
+  // Requires word boundary or specific delimiters to avoid false matches
+  const patternSimple = /([A-Za-z][A-Za-z\s-]*?)\s*~\s*(\d+(?:\.\d+)?)\s*%/g;
 
-    if (!locationMatch || !percentMatch) continue;
+  const patterns = [patternWithCount, patternSimple];
 
-    const location = locationMatch.trim();
-    const percent = parseFloat(percentMatch);
+  for (const regex of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(marketNotes)) !== null) {
+      const locationMatch = match[1];
+      const percentMatch = match[2];
 
-    if (location && !isNaN(percent)) {
-      result[location] = percent;
+      if (!locationMatch || !percentMatch) continue;
+
+      const location = locationMatch.trim();
+      const percent = parseFloat(percentMatch);
+
+      // Only add if location not already found (first pattern takes precedence)
+      if (location && !isNaN(percent) && !(location in result)) {
+        result[location] = percent;
+      }
     }
   }
 
@@ -180,6 +196,15 @@ function extractLocationPercents(marketNotes: string | null | undefined): Record
 
 /**
  * Removes mentions of other locations from text, keeping only the target location.
+ * Handles common grammatical patterns to avoid leaving artifacts like "hire in where".
+ *
+ * Patterns handled:
+ * - "in [Location]" → "" (preposition + location)
+ * - "vs [Location]" / "vs. [Location]" → "" (comparison)
+ * - "[Location] and [Location]" → "[Location]" (conjunctions)
+ * - ", [Location]," → "," (list items)
+ * - "[Location] ~N%" → "" (location with percentage in market notes)
+ * - "[Location] is/are/averages/commands..." → "" (subject + verb patterns)
  */
 function stripOtherLocations(text: string, keepLocation: string, allLocations: string[]): string {
   if (!text || typeof text !== "string") {
@@ -193,17 +218,97 @@ function stripOtherLocations(text: string, keepLocation: string, allLocations: s
 
     // Escape special regex characters in location name
     const escapedLocation = location.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const locationRegex = new RegExp(escapedLocation, "g");
 
-    output = output.replace(locationRegex, "").replace(/\s{2,}/g, " ");
+    // Order matters: more specific patterns first, then generic location removal
+
+    // Pattern: "[Location] is/are [adjective/comparison]" (e.g., "Ortigas is 7% below")
+    // Removes the whole clause up to the next sentence boundary
+    output = output.replace(
+      new RegExp(`${escapedLocation}\\s+(?:is|are|averages?|commands?)\\s+[^.;]*[.;]?`, "gi"),
+      ""
+    );
+
+    // Pattern: "in [Location]" (with word boundary to avoid partial matches)
+    output = output.replace(new RegExp(`\\bin\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: "vs [Location]" or "vs. [Location]"
+    output = output.replace(new RegExp(`\\bvs\\.?\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: "versus [Location]"
+    output = output.replace(new RegExp(`\\bversus\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: "below/above [Location]"
+    output = output.replace(new RegExp(`\\b(?:below|above)\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: "[Location] and " at start of comparison (e.g., "Makati and BGC")
+    output = output.replace(new RegExp(`${escapedLocation}\\s+and\\s+`, "gi"), "");
+
+    // Pattern: " and [Location]" (e.g., "hire in Makati and Ortigas")
+    output = output.replace(new RegExp(`\\s+and\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: " or [Location]" (e.g., "Makati or Ortigas")
+    output = output.replace(new RegExp(`\\s+or\\s+${escapedLocation}\\b`, "gi"), "");
+
+    // Pattern: "[Location] ~N%" (percentage distribution in market notes)
+    output = output.replace(new RegExp(`${escapedLocation}\\s*~\\s*\\d+(?:\\.\\d+)?%,?`, "gi"), "");
+
+    // Pattern: ", [Location]," (middle of a list)
+    output = output.replace(new RegExp(`,\\s*${escapedLocation}\\s*,`, "gi"), ",");
+
+    // Pattern: ", [Location]" at end of phrase (before period or end)
+    output = output.replace(new RegExp(`,\\s*${escapedLocation}(?=\\s*[.;:]|$)`, "gi"), "");
+
+    // Generic: remaining standalone location mentions
+    output = output.replace(new RegExp(`\\b${escapedLocation}\\b`, "g"), "");
   }
 
-  return output.trim();
+  // Clean up artifacts
+  output = output
+    // Multiple spaces to single space
+    .replace(/\s{2,}/g, " ")
+    // Multiple commas to single comma
+    .replace(/,\s*,+/g, ",")
+    // Comma followed by period
+    .replace(/,\s*\./g, ".")
+    // Semicolon followed by period or another semicolon
+    .replace(/;\s*[.;]/g, ".")
+    // Leading comma in parentheses
+    .replace(/\(\s*,/g, "(")
+    // Trailing comma in parentheses
+    .replace(/,\s*\)/g, ")")
+    // Empty parentheses
+    .replace(/\(\s*\)/g, "")
+    // Orphaned ":" followed by nothing meaningful
+    .replace(/:\s*([,;.])/g, "$1")
+    // Double periods
+    .replace(/\.{2,}/g, ".")
+    // Space before punctuation
+    .replace(/\s+([.,;:])/g, "$1")
+    // Orphaned percentage patterns like ", ~35%," → ","
+    .replace(/,\s*~\s*\d+(?:\.\d+)?%\s*,/g, ",")
+    // Sentence starting with lowercase after period (fix case)
+    .replace(/\.\s+([a-z])/g, (_, letter) => `. ${letter.toUpperCase()}`)
+    // Leading comma or semicolon at start
+    .replace(/^[,;]\s*/, "")
+    // Leading/trailing spaces
+    .trim();
+
+  return output;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a missing salary value found during validation.
+ */
+interface MissingSalaryValue {
+  location: string;
+  experienceRange: string;
+  field: SalaryField;
+  availableLocations: string[];
+}
 
 /**
  * Gets a salary value for a location from the parsed map.
@@ -226,6 +331,77 @@ function getSalaryValue(
 }
 
 /**
+ * Validates that all locations have salary data in all fields for all tiers.
+ * This pre-validation catches incomplete AI researcher output early and provides
+ * a comprehensive error message showing ALL missing values, not just the first one.
+ *
+ * @throws Error with detailed report of all missing salary values
+ */
+function validateSalaryCompleteness(salaryReport: MultiLocationSalaryReport): void {
+  const locations = salaryReport.locations_compared;
+  const salaryFields: SalaryField[] = [
+    "base_currency_min",
+    "base_currency_mid",
+    "base_currency_max",
+    "int_currency_min",
+    "int_currency_mid",
+    "int_currency_max",
+  ];
+
+  const missingValues: MissingSalaryValue[] = [];
+
+  for (const tier of salaryReport.salary_benchmark) {
+    for (const field of salaryFields) {
+      const valueMap = parseLocationMap(tier[field]);
+      const availableLocations = Object.keys(valueMap);
+
+      for (const location of locations) {
+        if (!valueMap[location]) {
+          missingValues.push({
+            location,
+            experienceRange: tier.experience_range,
+            field,
+            availableLocations,
+          });
+        }
+      }
+    }
+  }
+
+  if (missingValues.length > 0) {
+    // Group by location for clearer error message
+    const byLocation = new Map<string, MissingSalaryValue[]>();
+    for (const mv of missingValues) {
+      const existing = byLocation.get(mv.location) || [];
+      existing.push(mv);
+      byLocation.set(mv.location, existing);
+    }
+
+    const errorLines: string[] = [
+      `Incomplete salary data from AI researcher. Found ${missingValues.length} missing value(s):`,
+    ];
+
+    for (const [location, missing] of byLocation) {
+      errorLines.push(`\n  Location "${location}" is missing from:`);
+      for (const mv of missing) {
+        const available =
+          mv.availableLocations.length > 0
+            ? `(available: ${mv.availableLocations.join(", ")})`
+            : "(field is empty)";
+        errorLines.push(`    - ${mv.field} [${mv.experienceRange}] ${available}`);
+      }
+    }
+
+    errorLines.push(`\n  Expected locations: ${locations.join(", ")}`);
+    errorLines.push(
+      `\n  Hint: The AI researcher must include ALL locations in EVERY salary field.`
+    );
+
+    throw new Error(errorLines.join(""));
+  }
+}
+
+/**
  * Validates the salary report structure before splitting.
  * @throws Error if validation fails
  */
@@ -245,6 +421,9 @@ function validateSalaryReport(salaryReport: MultiLocationSalaryReport): void {
   ) {
     throw new Error("locations_compared is empty or missing");
   }
+
+  // Validate all locations have complete salary data
+  validateSalaryCompleteness(salaryReport);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
