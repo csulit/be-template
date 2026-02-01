@@ -1,7 +1,10 @@
 import { Worker, type Job } from "bullmq";
 import { redis } from "../../queue.js";
 import { prisma } from "../../db.js";
-import { runWorkflow } from "../../modules/talent-market-search/ai-agents/tms.js";
+import {
+  runWorkflow,
+  type PromptEnhancerInput,
+} from "../../modules/talent-market-search/ai-agents/tms.js";
 import {
   TmsMarketScopeJobDataSchema,
   type TmsMarketScopeJobData,
@@ -19,6 +22,9 @@ import {
 } from "./tms-market-scope.constant.js";
 import type { JobResult } from "../types.js";
 
+/**
+ * Database record fields needed for the workflow
+ */
 interface MarketScopeRecord {
   jobTitle: string;
   budgetMinMax: string;
@@ -28,19 +34,22 @@ interface MarketScopeRecord {
   clientName: string | null;
 }
 
-function buildAgentInput(record: MarketScopeRecord): string {
-  const parts = [
-    `Job Title: ${record.jobTitle}`,
-    `Budget Range: ${record.budgetMinMax} ${record.intCurrency}`,
-    `Experience Level: ${record.experienceScope}`,
-    `Location(s): ${record.locationScope}`,
-  ];
-
-  if (record.clientName) {
-    parts.push(`Client: ${record.clientName}`);
-  }
-
-  return parts.join("\n");
+/**
+ * Converts a database record into structured input for the prompt enhancer agent.
+ * This is the preferred method that enables AI-powered prompt optimization.
+ *
+ * @param record - The market scope record from the database
+ * @returns Structured input for the prompt enhancer
+ */
+function buildStructuredInput(record: MarketScopeRecord): PromptEnhancerInput {
+  return {
+    jobTitle: record.jobTitle,
+    budgetMinMax: record.budgetMinMax,
+    intCurrency: record.intCurrency,
+    locationScope: record.locationScope,
+    experienceScope: record.experienceScope || undefined,
+    clientName: record.clientName,
+  };
 }
 
 async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult> {
@@ -82,12 +91,14 @@ async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult
   await job.updateProgress(20);
 
   try {
-    const inputText = buildAgentInput(record);
+    const structuredInput = buildStructuredInput(record);
     console.log(`${LOG_PREFIX} Running agent workflow for record ${recordId}`);
+    console.log(`${LOG_PREFIX} Job: ${record.jobTitle} | Location: ${record.locationScope}`);
 
     await job.updateProgress(30);
 
-    const result = await runWorkflow({ input_as_text: inputText });
+    // Use structured input to enable prompt enhancement
+    const result = await runWorkflow({ structured_input: structuredInput });
 
     await job.updateProgress(90);
 

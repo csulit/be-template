@@ -8,6 +8,7 @@ import { webSearchTool } from "@openai/agents";
  * Agent name identifiers used for tracing and logging
  */
 export const AGENT_NAMES = {
+  PROMPT_ENHANCER: "Research Prompt Enhancer",
   TALENT_ACQUISITION_RESEARCHER: "Talent Acquisition Specialist Researcher",
   LOCATION_REPORT_AGGREGATOR: "Location Report Aggregator",
 } as const;
@@ -25,6 +26,7 @@ export const WORKFLOW = {
  * OpenAI model identifiers
  */
 export const MODELS = {
+  PROMPT_ENHANCER: "gpt-4.1-mini",
   RESEARCHER: "gpt-5-mini",
   AGGREGATOR: "gpt-4.1-mini",
 } as const;
@@ -47,6 +49,17 @@ export const AGGREGATOR_MODEL_SETTINGS = {
   temperature: 1,
   topP: 1,
   maxTokens: 2048,
+  store: false,
+} as const;
+
+/**
+ * Model settings for the Prompt Enhancer agent
+ * Lower temperature for consistent, structured output
+ */
+export const PROMPT_ENHANCER_MODEL_SETTINGS = {
+  temperature: 0.3,
+  topP: 0.9,
+  maxTokens: 1024,
   store: false,
 } as const;
 
