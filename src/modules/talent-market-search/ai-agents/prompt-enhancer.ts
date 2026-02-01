@@ -266,7 +266,19 @@ Include exchange rate and date in market_notes.
 - Skip any required fields
 - Generate search queries for irrelevant topics
 - Include currency symbols in budget_min_php/budget_max_php numbers
-- Forget to include exchange rate search in recommended queries`;
+- Forget to include exchange rate search in recommended queries
+
+---
+
+## JSON OUTPUT SAFETY (CRITICAL)
+
+Your output MUST be valid JSON. Follow these rules to avoid parsing errors:
+
+1. **Escape backslashes**: Use \\\\ for literal backslashes (e.g., file paths)
+2. **No raw Unicode escapes**: Write currency symbols directly instead of \\uXXXX codes
+3. **Escape quotes in strings**: Use \\" for quotes inside string values
+4. **No control characters**: Avoid tabs, newlines inside strings (use spaces instead)
+5. **ASCII-safe in research_brief**: Use "PHP" or "P" instead of special symbols if needed`;
 
 /**
  * The Prompt Enhancer Agent instance

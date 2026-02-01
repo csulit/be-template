@@ -39,6 +39,12 @@ vi.mock("../../../src/db.js", () => ({
       create: vi.fn(),
       count: vi.fn(),
     },
+    tmsWorkflowResult: {
+      findUnique: vi.fn(),
+    },
+    organization: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -78,6 +84,17 @@ describe("TMS Market Scope Search Routes", () => {
     createdAt: new Date("2024-01-15T10:30:00.000Z"),
     updatedAt: new Date("2024-01-15T10:30:00.000Z"),
     createdBy: mockCreatedBy,
+  };
+
+  const mockWorkflowResult = {
+    id: "clxwfr0000000000001",
+    searchId: "clxmss0000000000001",
+    enhancedPrompt: { research_type: "single_location_market_scan" },
+    marketScopingReport: { position_title: "Senior Developer" },
+    splitReports: null,
+    aggregatedLocationReport: null,
+    createdAt: new Date("2024-01-15T11:00:00.000Z"),
+    updatedAt: new Date("2024-01-15T11:00:00.000Z"),
   };
 
   beforeAll(() => {
@@ -240,6 +257,13 @@ describe("TMS Market Scope Search Routes", () => {
       organizationId: mockOrganizationId,
     };
 
+    beforeEach(() => {
+      // Mock organization exists by default
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+        id: mockOrganizationId,
+      } as never);
+    });
+
     it("should create a new market scope search", async () => {
       vi.mocked(prisma.tmsMarketScopeSearch.create).mockResolvedValue(
         mockMarketScopeSearch as never
@@ -370,6 +394,42 @@ describe("TMS Market Scope Search Routes", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("should return 400 when organizationId does not exist in database", async () => {
+      // Mock organization not found
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
+
+      const nonExistentOrgId = "clxnonexistent00001";
+      const res = await client.api.tms["market-scope-searches"].$post({
+        json: {
+          ...validCreateBody,
+          organizationId: nonExistentOrgId,
+        },
+      });
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+
+      // Verify the create was NOT called since validation should fail first
+      expect(prisma.tmsMarketScopeSearch.create).not.toHaveBeenCalled();
+    });
+
+    it("should verify organization exists before creating market scope search", async () => {
+      vi.mocked(prisma.tmsMarketScopeSearch.create).mockResolvedValue(
+        mockMarketScopeSearch as never
+      );
+
+      await client.api.tms["market-scope-searches"].$post({
+        json: validCreateBody,
+      });
+
+      // Verify organization lookup was called with correct ID
+      expect(prisma.organization.findUnique).toHaveBeenCalledWith({
+        where: { id: mockOrganizationId },
+        select: { id: true },
+      });
+    });
   });
 
   describe("Organization membership enforcement", () => {
@@ -415,6 +475,91 @@ describe("TMS Market Scope Search Routes", () => {
       expect(res.status).toBe(403);
       const json = await res.json();
       expect(json.success).toBe(false);
+    });
+  });
+
+  describe("GET /api/tms/market-scope-searches/:id/workflow-result", () => {
+    it("should return workflow result for a valid search ID", async () => {
+      vi.mocked(prisma.tmsWorkflowResult.findUnique).mockResolvedValue(mockWorkflowResult as never);
+
+      const res = await client.api.tms["market-scope-searches"][":id"]["workflow-result"].$get({
+        param: { id: "clxmss0000000000001" },
+      });
+
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json).toMatchObject({
+        success: true,
+        data: expect.objectContaining({
+          id: "clxwfr0000000000001",
+          searchId: "clxmss0000000000001",
+          enhancedPrompt: { research_type: "single_location_market_scan" },
+          marketScopingReport: { position_title: "Senior Developer" },
+          splitReports: null,
+          aggregatedLocationReport: null,
+        }),
+      });
+    });
+
+    it("should return workflow result with all fields populated", async () => {
+      const fullWorkflowResult = {
+        ...mockWorkflowResult,
+        splitReports: { reports: [{ location: "Makati" }] },
+        aggregatedLocationReport: { locations_analyzed: ["Makati", "BGC"] },
+      };
+
+      vi.mocked(prisma.tmsWorkflowResult.findUnique).mockResolvedValue(fullWorkflowResult as never);
+
+      const res = await client.api.tms["market-scope-searches"][":id"]["workflow-result"].$get({
+        param: { id: "clxmss0000000000001" },
+      });
+
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.data.splitReports).toEqual({ reports: [{ location: "Makati" }] });
+      expect(json.data.aggregatedLocationReport).toEqual({ locations_analyzed: ["Makati", "BGC"] });
+    });
+
+    it("should return 404 when workflow result does not exist", async () => {
+      vi.mocked(prisma.tmsWorkflowResult.findUnique).mockResolvedValue(null);
+
+      const res = await client.api.tms["market-scope-searches"][":id"]["workflow-result"].$get({
+        param: { id: "clxmss0000000000001" },
+      });
+
+      expect(res.status).toBe(404);
+
+      const json = await res.json();
+      expect(json.success).toBe(false);
+    });
+
+    it("should return 403 when orgGuard rejects the request", async () => {
+      orgMiddlewareMock.mockImplementationOnce(async () => {
+        throw Forbidden("Not a member of this organization");
+      });
+
+      const res = await client.api.tms["market-scope-searches"][":id"]["workflow-result"].$get({
+        param: { id: "clxmss0000000000001" },
+      });
+
+      expect(res.status).toBe(403);
+
+      const json = await res.json();
+      expect(json.success).toBe(false);
+    });
+
+    it("should query workflow result by search ID", async () => {
+      vi.mocked(prisma.tmsWorkflowResult.findUnique).mockResolvedValue(mockWorkflowResult as never);
+
+      await client.api.tms["market-scope-searches"][":id"]["workflow-result"].$get({
+        param: { id: "clxmss0000000000001" },
+      });
+
+      expect(prisma.tmsWorkflowResult.findUnique).toHaveBeenCalledWith({
+        where: { searchId: "clxmss0000000000001" },
+      });
     });
   });
 });

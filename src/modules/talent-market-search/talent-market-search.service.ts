@@ -1,6 +1,6 @@
 import { prisma } from "../../db.js";
 import { type Prisma } from "../../generated/prisma/client.js";
-import { NotFound } from "../../lib/errors.js";
+import { BadRequest, NotFound } from "../../lib/errors.js";
 import { getPrismaSkipTake } from "../../shared/utils/pagination.js";
 import {
   toTmsMarketScopeSearchDto,
@@ -38,11 +38,22 @@ export class TalentMarketSearchService {
   }
 
   async createMarketScopeSearch(data: CreateTmsMarketScopeSearchBody, createdById: string) {
-    const { clientName, ...restData } = data;
+    const { clientName, organizationId, ...restData } = data;
+
+    // Validate that the organization exists
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true },
+    });
+
+    if (!organization) {
+      throw BadRequest(`Organization with ID "${organizationId}" does not exist`);
+    }
 
     const record = await prisma.tmsMarketScopeSearch.create({
       data: {
         ...restData,
+        organizationId,
         clientName: clientName ?? null,
         isProcessed: false,
         createdById,
