@@ -53,7 +53,7 @@ model TmsMarketScopeSearch {
   isProcessed             Boolean   @default(false)
   processingAt            DateTime? // Lock timestamp to prevent duplicate processing
   processedAt             DateTime? // When processing completed successfully
-  result                  Json?     // Store the agent workflow result
+  result                  Json?     // Store the agent workflow result (deprecated: use workflowResult relation)
   error                   String?   // Store error message if processing fails
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
@@ -61,12 +61,29 @@ model TmsMarketScopeSearch {
   organizationId          String
 
   // Relations
-  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User                 @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflowResult TmsWorkflowResult?
 
   // Indexes
   @@index([createdById])
   @@index([organizationId])
   @@index([isProcessed, processingAt]) // Composite index for job scheduling queries
   @@map("tms_market_scope_searches")
+}
+
+model TmsWorkflowResult {
+  id                       String   @id @default(cuid())
+  searchId                 String   @unique
+  enhancedPrompt           Json?    // Stores the enhanced prompt from prompt enhancer agent
+  marketScopingReport      Json?    // Stores the main research report
+  splitReports             Json?    // Stores split location reports (only for multi-location searches)
+  aggregatedLocationReport Json?    // Stores aggregated report (only for multi-location searches)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  // Relations
+  search TmsMarketScopeSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+
+  @@map("tms_workflow_results")
 }

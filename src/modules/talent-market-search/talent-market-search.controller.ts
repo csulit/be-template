@@ -3,6 +3,7 @@ import { talentMarketSearchService } from "./talent-market-search.service.js";
 import type {
   ListMarketScopeSearchesRoute,
   CreateMarketScopeSearchRoute,
+  GetWorkflowResultRoute,
 } from "./talent-market-search.route.js";
 
 export const talentMarketSearchController = {
@@ -18,4 +19,10 @@ export const talentMarketSearchController = {
     const data = await talentMarketSearchService.createMarketScopeSearch(body, user.id);
     return c.json({ success: true as const, data }, 201);
   }) satisfies RouteHandler<CreateMarketScopeSearchRoute>,
+
+  getWorkflowResult: (async (c) => {
+    const { id } = c.req.valid("param");
+    const data = await talentMarketSearchService.getWorkflowResultBySearchId(id);
+    return c.json({ success: true as const, data }, 200);
+  }) satisfies RouteHandler<GetWorkflowResultRoute>,
 };
