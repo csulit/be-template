@@ -9,10 +9,12 @@ Create a branch, run checks, and push changes with flexible options.
 ## Format
 
 ```
-/push <branch-name> [options]
+/push [branch-name] [options]
 ```
 
-**Branch Prefixes:**
+**Branch name is optional!** If omitted, a branch name will be auto-generated based on your changes.
+
+**Branch Prefixes (when manually specifying):**
 
 | Prefix | Resulting Branch | Example |
 |--------|------------------|---------|
@@ -24,11 +26,25 @@ Create a branch, run checks, and push changes with flexible options.
 | `refactor:name` | `refactor/name` | `/push refactor:auth-service` → `refactor/auth-service` |
 | (no prefix) | (as-is) | `/push my-branch` → `my-branch` |
 
+**Auto-generated Branch Names:**
+
+When no branch name is provided, analyze the changes and generate a name:
+
+| Change Type | Generated Branch | Example |
+|-------------|------------------|---------|
+| New module files | `feature/<module-name>` | New `src/modules/payments/*` → `feature/payments-module` |
+| New feature files | `feature/<feature-name>` | New auth middleware → `feature/auth-middleware` |
+| Bug fixes | `bugfix/<description>` | Fix in user service → `bugfix/user-service-fix` |
+| Config/deps changes | `chore/<description>` | package.json updates → `chore/update-dependencies` |
+| Documentation | `docs/<description>` | README changes → `docs/update-readme` |
+| Test files only | `test/<description>` | New tests → `test/user-service-tests` |
+| Refactoring | `refactor/<description>` | Code cleanup → `refactor/user-service` |
+
 **Options:**
 
 | Flag | Description |
 |------|-------------|
-| `--base=<branch>` | Base branch to branch from (default: current branch) |
+| `--base=<branch>` | Base branch to branch from (default: `dev`) |
 | `--skip-tests` | Skip running tests (use cautiously) |
 | `--skip-lint` | Skip linting (use cautiously) |
 | `--amend` | Amend the last commit instead of creating a new one |
@@ -39,20 +55,26 @@ Create a branch, run checks, and push changes with flexible options.
 **Examples:**
 
 ```bash
-# Feature branch from current branch (creates PR to dev by default)
+# Auto-generate branch name from changes (fastest workflow!)
+/push
+
+# Auto-generate with draft PR
+/push --draft
+
+# Manually specify branch name
 /push feat:notifications
 
-# Hotfix from main
+# Hotfix from main (override base branch)
 /push fix:critical-bug --base=main
 
 # Quick push without tests (for WIP)
 /push feat:wip-feature --skip-tests
 
 # Push without creating a PR
-/push feat:user-profiles --no-pr
+/push --no-pr
 
 # Create PR as draft
-/push feat:experimental --draft
+/push --draft
 
 # Amend last commit with new changes
 /push --amend
@@ -63,13 +85,13 @@ Create a branch, run checks, and push changes with flexible options.
 ### Step 0: Parse Arguments
 
 Parse the arguments to extract:
-1. **Branch name** - Apply prefix transformation if present
-2. **Base branch** - From `--base=` flag or use current branch
+1. **Branch name** - Apply prefix transformation if present, or auto-generate if not provided
+2. **Base branch** - From `--base=` flag or default to `dev`
 3. **Skip flags** - `--skip-tests`, `--skip-lint`, `--no-verify`
 4. **Amend flag** - `--amend` for amending last commit
 5. **PR flags** - `--no-pr` (to skip PR creation) and `--draft`
 
-**Branch prefix mapping:**
+**Branch prefix mapping (when manually specified):**
 ```
 feat:   → feature/
 fix:    → hotfix/
@@ -79,14 +101,29 @@ docs:   → docs/
 refactor: → refactor/
 ```
 
+**Auto-generate branch name (when not provided):**
+
+1. Run `git status --porcelain` and `git diff` to analyze changes
+2. Determine the type and scope of changes:
+   - **New module** (`src/modules/<name>/*`) → `feature/<name>-module`
+   - **New/modified routes, controllers, services** → `feature/<module>-<description>`
+   - **New provider** (`src/providers/*`) → `feature/<provider>-provider`
+   - **Bug fixes** (small targeted changes) → `bugfix/<module>-<description>`
+   - **Config files** (package.json, tsconfig, etc.) → `chore/<description>`
+   - **Documentation** (*.md files) → `docs/<description>`
+   - **Tests only** → `test/<module>-tests`
+   - **Refactoring** (restructuring without new features) → `refactor/<description>`
+3. Generate a kebab-case branch name (lowercase, hyphens, max 50 chars)
+4. Ensure uniqueness by checking `git branch -a`
+
 ### Step 1: Prepare Branch
 
 **If `--amend` is NOT set:**
 
 1. Determine base branch:
    - If `--base=<branch>` provided → use that branch
-   - Otherwise → stay on current branch
-2. If base branch specified and different from current:
+   - Otherwise → use `dev` as default
+2. Fetch and checkout base branch:
    - Run `git fetch origin <base-branch>`
    - Run `git checkout <base-branch>`
    - Run `git pull --rebase origin <base-branch>`
@@ -209,3 +246,5 @@ After completion, provide a summary:
 - `--no-verify` and `--skip-*` flags should be used sparingly
 - `--amend` uses `--force-with-lease` for safety (prevents overwriting others' work)
 - Never use `--amend` on shared branches (main, dev) without team agreement
+- **NEVER delete the `dev` or `main` branches** - these are protected long-lived branches
+- When merging PRs, do NOT use `--delete-branch` for PRs targeting `main` from `dev`
