@@ -5,6 +5,7 @@ import {
   runWorkflow,
   type PromptEnhancerInput,
 } from "../../modules/talent-market-search/ai-agents/tms.js";
+import { talentMarketSearchService } from "../../modules/talent-market-search/talent-market-search.service.js";
 import {
   TmsMarketScopeJobDataSchema,
   type TmsMarketScopeJobData,
@@ -99,6 +100,12 @@ async function processRecord(job: Job<TmsMarketScopeJobData>): Promise<JobResult
 
     // Use structured input to enable prompt enhancement
     const result = await runWorkflow({ structured_input: structuredInput });
+
+    await job.updateProgress(70);
+
+    // Save workflow result to TmsWorkflowResult table for structured querying
+    await talentMarketSearchService.saveWorkflowResult(recordId, result);
+    console.log(`${LOG_PREFIX} Saved workflow result for record ${recordId}`);
 
     await job.updateProgress(90);
 

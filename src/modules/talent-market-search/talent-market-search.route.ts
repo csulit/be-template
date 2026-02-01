@@ -6,10 +6,12 @@ import { talentMarketSearchController } from "./talent-market-search.controller.
 import {
   TmsMarketScopeSearchResponseSchema,
   TmsMarketScopeSearchListResponseSchema,
+  TmsWorkflowResultResponseSchema,
 } from "./talent-market-search.dto.js";
 import {
   CreateTmsMarketScopeSearchBodySchema,
   ListTmsMarketScopeSearchQuerySchema,
+  TmsMarketScopeSearchParamsSchema,
 } from "./talent-market-search.validator.js";
 
 const app = new OpenAPIHono<OrgEnv>();
@@ -97,10 +99,54 @@ const createMarketScopeSearchRoute = createRoute({
   },
 });
 
+const getWorkflowResultRoute = createRoute({
+  method: "get",
+  path: "/market-scope-searches/{id}/workflow-result",
+  tags: ["TMS Market Scope Search"],
+  summary: "Get workflow result for a market scope search",
+  description:
+    "Returns the AI workflow result (enhanced prompt, market scoping report, split reports, aggregated report) for a specific market scope search.",
+  middleware: [
+    authMiddleware,
+    orgGuard({ source: { from: "resource", table: "tmsMarketScopeSearch" } }),
+  ] as const,
+  request: {
+    params: TmsMarketScopeSearchParamsSchema,
+  },
+  responses: {
+    200: {
+      description: "Workflow result retrieved successfully",
+      content: {
+        "application/json": {
+          schema: TmsWorkflowResultResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: "Workflow result not found",
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
 export type ListMarketScopeSearchesRoute = typeof listMarketScopeSearchesRoute;
 export type CreateMarketScopeSearchRoute = typeof createMarketScopeSearchRoute;
+export type GetWorkflowResultRoute = typeof getWorkflowResultRoute;
 
 app.openapi(listMarketScopeSearchesRoute, talentMarketSearchController.listMarketScopeSearches);
 app.openapi(createMarketScopeSearchRoute, talentMarketSearchController.createMarketScopeSearch);
+app.openapi(getWorkflowResultRoute, talentMarketSearchController.getWorkflowResult);
 
 export { app as talentMarketSearchRoutes };
