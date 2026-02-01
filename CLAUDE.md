@@ -144,6 +144,14 @@ import type { Prisma } from "@/generated/prisma";
 - Unit tests: `tests/unit/` - mock Prisma with `vi.mock("@/db")`
 - Setup file: `tests/setup.ts`
 
+## Git Workflow
+
+- **Main branch:** `main` - production branch
+- **Development branch:** `dev` - primary development branch
+- **NEVER delete the `dev` branch** when merging PRs
+- When merging PRs to `main`, use `gh pr merge --squash` without `--delete-branch`
+- Feature branches can be deleted after merge, but `dev` must always be preserved
+
 ## OpenAPI
 
 - Schema at `/openapi.json`
