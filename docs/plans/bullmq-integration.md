@@ -354,7 +354,7 @@ Already configured in `docker-compose.yml`:
 services:
   redis:
     image: redis:7-alpine
-    container_name: be-template-redis
+    container_name: kore-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -366,7 +366,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - be-template-network
+      - kore-network
 
 volumes:
   redis_data:

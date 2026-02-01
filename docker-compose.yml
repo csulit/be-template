@@ -4,12 +4,12 @@ services:
   # =============================================================================
   postgres:
     image: postgres:16-alpine
-    container_name: be-template-db
+    container_name: kore-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: be_template
+      POSTGRES_DB: kore
     ports:
       - "5432:5432"
     volumes:
@@ -20,14 +20,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - be-template-network
+      - kore-network
 
   # =============================================================================
   # Redis
   # =============================================================================
   redis:
     image: redis:7-alpine
-    container_name: be-template-redis
+    container_name: kore-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -39,7 +39,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - be-template-network
+      - kore-network
 
   # =============================================================================
   # Database migrations (run once)
@@ -49,15 +49,15 @@ services:
       context: .
       dockerfile: Dockerfile
       target: build
-    container_name: be-template-migrate
+    container_name: kore-migrate
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/be_template?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/kore?schema=public
     command: ["npx", "prisma", "migrate", "deploy"]
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - be-template-network
+      - kore-network
     profiles:
       - migrate
 
@@ -66,5 +66,5 @@ volumes:
   redis_data:
 
 networks:
-  be-template-network:
+  kore-network:
     driver: bridge

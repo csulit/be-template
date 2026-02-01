@@ -56,8 +56,8 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 FROM node:22-alpine AS production
 
 # Add labels for better maintainability
-LABEL org.opencontainers.image.title="be-template"
-LABEL org.opencontainers.image.description="Production-ready Hono + better-auth API"
+LABEL org.opencontainers.image.title="kore"
+LABEL org.opencontainers.image.description="Multi-app modular backend powered by Hono + better-auth"
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
