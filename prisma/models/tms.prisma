@@ -67,5 +67,6 @@ model TmsMarketScopeSearch {
   // Indexes
   @@index([createdById])
   @@index([organizationId])
+  @@index([isProcessed, processingAt]) // Composite index for job scheduling queries
   @@map("tms_market_scope_searches")
 }
