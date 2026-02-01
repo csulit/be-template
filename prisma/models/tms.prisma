@@ -37,7 +37,7 @@ model TmsUser {
 }
 
 model TmsMarketScopeSearch {
-  id                      String   @id @default(cuid())
+  id                      String    @id @default(cuid())
   clientName              String?
   jobTitle                String
   budgetMinMax            String
@@ -50,9 +50,13 @@ model TmsMarketScopeSearch {
   workTypes               String
   isApproachable          Boolean
   hasCv                   Boolean
-  isProcessed             Boolean  @default(false)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  isProcessed             Boolean   @default(false)
+  processingAt            DateTime? // Lock timestamp to prevent duplicate processing
+  processedAt             DateTime? // When processing completed successfully
+  result                  Json?     // Store the agent workflow result
+  error                   String?   // Store error message if processing fails
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
   createdById             String
   organizationId          String
 
