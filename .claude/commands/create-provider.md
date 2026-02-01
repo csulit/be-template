@@ -145,7 +145,7 @@ STRUCTURE (in this order):
      env.<ENV_VAR> && env.<ENV_VAR>
        ? new <Production><Provider>Provider()
        : new Console<Provider>Provider();
-````
+   ```
 
 IMPORTANT:
 
@@ -153,8 +153,6 @@ IMPORTANT:
 - Do NOT modify any existing files
 - Match the exact code style of existing providers (spacing, comments, etc.)
 - Use `export interface` for all interfaces (they are consumed by other files)
-
-````
 
 ### Step 6: Wait for Phase 2
 
@@ -252,7 +250,7 @@ After completion, provide a summary:
 - Implement the production provider when SDK credentials are available
 - Add environment variables to `.env.example` if needed
 - Import and use via: `import { <provider>Provider } from "@/providers/<provider>.provider.js";`
-````
+```
 
 ## Why Four Phases?
 
