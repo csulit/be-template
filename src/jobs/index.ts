@@ -2,6 +2,13 @@ import type { Queue, Worker } from "bullmq";
 
 // Import all queues and workers
 import { exampleQueue, exampleWorker } from "./example/index.js";
+import {
+  tmsMarketScopeQueue,
+  tmsMarketScopeSchedulerQueue,
+  tmsMarketScopeWorker,
+  tmsMarketScopeSchedulerWorker,
+  initTmsMarketScopeScheduler,
+} from "./tms-market-scope/index.js";
 
 // Re-export types
 export * from "./types.js";
@@ -9,26 +16,23 @@ export * from "./types.js";
 // Re-export example job
 export * from "./example/index.js";
 
+// Re-export TMS market scope job
+export * from "./tms-market-scope/index.js";
+
 /**
  * All registered queues.
  * Add new queues here for centralized management.
  */
-const queues: Queue[] = [
-  exampleQueue,
-  // Add more queues here
-];
+const queues: Queue[] = [exampleQueue, tmsMarketScopeQueue, tmsMarketScopeSchedulerQueue];
 
 /**
  * All registered workers.
  * Add new workers here for centralized management.
  */
-const workers: Worker[] = [
-  exampleWorker,
-  // Add more workers here
-];
+const workers: Worker[] = [exampleWorker, tmsMarketScopeWorker, tmsMarketScopeSchedulerWorker];
 
 /**
- * Start all workers.
+ * Start all workers and initialize schedulers.
  * Call this during server startup.
  */
 export async function startWorkers(): Promise<void> {
@@ -38,6 +42,9 @@ export async function startWorkers(): Promise<void> {
   for (const worker of workers) {
     console.log(`[jobs] Worker "${worker.name}" is running`);
   }
+
+  // Initialize schedulers
+  await initTmsMarketScopeScheduler();
 }
 
 /**
