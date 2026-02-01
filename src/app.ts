@@ -13,6 +13,7 @@ import { usersRoutes } from "./modules/users/users.route.js";
 import { documentsRoutes } from "./modules/documents/documents.route.js";
 import { incomingEmailRoutes } from "./modules/incoming-email/incoming-email.route.js";
 import { reimbursementRoutes } from "./modules/reimbursement/reimbursement.route.js";
+import { talentMarketSearchRoutes } from "./modules/talent-market-search/talent-market-search.route.js";
 
 export type AppEnv = {
   Variables: {
@@ -61,6 +62,7 @@ export function createApp() {
   app.route("/api/documents", documentsRoutes);
   app.route("/api/incoming-emails", incomingEmailRoutes);
   app.route("/api/reimbursement", reimbursementRoutes);
+  app.route("/api/tms", talentMarketSearchRoutes);
 
   // OpenAPI documentation
   setupOpenAPI(app);

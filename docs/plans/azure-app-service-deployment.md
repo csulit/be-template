@@ -19,7 +19,7 @@ Deploy the Hono API to Azure App Service as a Docker container, with CI/CD via G
 ## Step 1: Create Azure Container Registry (ACR)
 
 ```bash
-RESOURCE_GROUP="rg-be-template"
+RESOURCE_GROUP="rg-kore"
 ACR_NAME="betemplatecr"          # globally unique, lowercase alphanumeric
 LOCATION="eastasia"               # adjust to your region
 
@@ -39,8 +39,8 @@ az acr create \
 ## Step 2: Create App Service Plan + Web App
 
 ```bash
-APP_SERVICE_PLAN="asp-be-template"
-WEB_APP_NAME="app-be-template"   # globally unique
+APP_SERVICE_PLAN="asp-kore"
+WEB_APP_NAME="app-kore"   # globally unique
 
 # Create Linux App Service Plan (P1v3 for production, B1 for staging/dev)
 az appservice plan create \
@@ -55,7 +55,7 @@ az webapp create \
   --resource-group $RESOURCE_GROUP \
   --plan $APP_SERVICE_PLAN \
   --name $WEB_APP_NAME \
-  --deployment-container-image-name "${ACR_NAME}.azurecr.io/be-template:latest"
+  --deployment-container-image-name "${ACR_NAME}.azurecr.io/kore:latest"
 ```
 
 **SKU notes:**
@@ -173,21 +173,21 @@ az postgres flexible-server firewall-rule create \
 # Create VNet and subnets
 az network vnet create \
   --resource-group $RESOURCE_GROUP \
-  --name vnet-be-template \
+  --name vnet-kore \
   --address-prefix 10.0.0.0/16 \
   --subnet-name snet-app \
   --subnet-prefix 10.0.1.0/24
 
 az network vnet subnet create \
   --resource-group $RESOURCE_GROUP \
-  --vnet-name vnet-be-template \
+  --vnet-name vnet-kore \
   --name snet-private-endpoints \
   --address-prefix 10.0.2.0/24
 
 # Delegate the app subnet to App Service
 az network vnet subnet update \
   --resource-group $RESOURCE_GROUP \
-  --vnet-name vnet-be-template \
+  --vnet-name vnet-kore \
   --name snet-app \
   --delegations Microsoft.Web/serverFarms
 
@@ -195,14 +195,14 @@ az network vnet subnet update \
 az webapp vnet-integration add \
   --resource-group $RESOURCE_GROUP \
   --name $WEB_APP_NAME \
-  --vnet vnet-be-template \
+  --vnet vnet-kore \
   --subnet snet-app
 
 # Create private endpoint for PostgreSQL
 az network private-endpoint create \
   --resource-group $RESOURCE_GROUP \
   --name pe-postgres \
-  --vnet-name vnet-be-template \
+  --vnet-name vnet-kore \
   --subnet snet-private-endpoints \
   --private-connection-resource-id $(az postgres flexible-server show --resource-group $RESOURCE_GROUP --name your-pg-server --query id --output tsv) \
   --group-ids postgresqlServer \
@@ -212,7 +212,7 @@ az network private-endpoint create \
 az network private-endpoint create \
   --resource-group $RESOURCE_GROUP \
   --name pe-redis \
-  --vnet-name vnet-be-template \
+  --vnet-name vnet-kore \
   --subnet snet-private-endpoints \
   --private-connection-resource-id $(az redis show --resource-group $RESOURCE_GROUP --name your-redis --query id --output tsv) \
   --group-ids redisCache \
@@ -243,7 +243,7 @@ npx prisma migrate deploy --config prisma/prisma.config.ts
 | `ACR_PASSWORD`      | ACR admin password                               |
 | `AZURE_CREDENTIALS` | JSON from `az ad sp create-for-rbac --json-auth` |
 | `DATABASE_URL`      | Production PostgreSQL connection string          |
-| `AZURE_WEBAPP_NAME` | `app-be-template`                                |
+| `AZURE_WEBAPP_NAME` | `app-kore`                                |
 
 Create the service principal for GitHub Actions:
 
@@ -270,7 +270,7 @@ on:
 
 env:
   ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-  IMAGE_NAME: be-template
+  IMAGE_NAME: kore
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
 
 permissions:

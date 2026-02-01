@@ -1,0 +1,67 @@
+// ============================================================================
+// TMS (Talent Market Search) Models
+// ============================================================================
+
+model TmsRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tmsUsers TmsUser[]
+
+  // Indexes
+  @@map("tms_roles")
+}
+
+model TmsUser {
+  id             String   @id @default(cuid())
+  userId         String
+  roleId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         TmsRole      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("tms_users")
+}
+
+model TmsMarketScopeSearch {
+  id                      String   @id @default(cuid())
+  clientName              String?
+  jobTitle                String
+  budgetMinMax            String
+  intCurrency             String
+  experienceScope         String
+  locationScope           String
+  willingToRelocate       Boolean
+  cvKeywordsBooleanSearch String
+  salaryFilter            String
+  workTypes               String
+  isApproachable          Boolean
+  hasCv                   Boolean
+  isProcessed             Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  createdById             String
+  organizationId          String
+
+  // Relations
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([createdById])
+  @@index([organizationId])
+  @@map("tms_market_scope_searches")
+}
