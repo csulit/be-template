@@ -144,24 +144,15 @@ import type { Prisma } from "@/generated/prisma";
 import { NotFound, BadRequest, Conflict } from "@/lib/errors";
 
 class FeatureService {
-  async create(
-    data: CreateFeatureData,
-    tx: Prisma.TransactionClient = prisma
-  ) {
+  async create(data: CreateFeatureData, tx: Prisma.TransactionClient = prisma) {
     return await tx.feature.create({ data });
   }
 
-  async findById(
-    id: string,
-    tx: Prisma.TransactionClient = prisma
-  ) {
+  async findById(id: string, tx: Prisma.TransactionClient = prisma) {
     return await tx.feature.findUnique({ where: { id } });
   }
 
-  async findByIdOrThrow(
-    id: string,
-    tx: Prisma.TransactionClient = prisma
-  ) {
+  async findByIdOrThrow(id: string, tx: Prisma.TransactionClient = prisma) {
     const feature = await this.findById(id, tx);
     if (!feature) {
       throw NotFound("Feature not found");
@@ -205,7 +196,7 @@ const adminRoute = createRoute({
 
 // In controller, access user and session
 const handler: RouteHandler<typeof protectedRoute> = async (c) => {
-  const user = c.get("user");     // User object
+  const user = c.get("user"); // User object
   const session = c.get("session"); // Session object
   // ...
 };
@@ -248,6 +239,7 @@ if (item.ownerId !== userId) {
 ## Checklist
 
 When creating a new endpoint:
+
 - [ ] Create validator schemas in `<feature>.validator.ts`
 - [ ] Create response DTO schemas in `<feature>.dto.ts`
 - [ ] Create or update service in `<feature>.service.ts`

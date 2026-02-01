@@ -19,6 +19,7 @@ docs/
 ### guides/
 
 Step-by-step instructions for common tasks:
+
 - Setup guides
 - Development workflows
 - Troubleshooting guides
@@ -27,6 +28,7 @@ Step-by-step instructions for common tasks:
 ### plans/
 
 Technical implementation plans before coding:
+
 - Feature designs
 - Architecture decisions
 - Migration plans
@@ -35,6 +37,7 @@ Technical implementation plans before coding:
 ### references/
 
 Technical reference material:
+
 - API specifications
 - External service documentation
 - Configuration references
@@ -62,47 +65,59 @@ When planning a new feature:
 # Feature Name Implementation Plan
 
 ## Overview
+
 Brief description of what we're implementing.
 
 ## Goals
+
 - Goal 1
 - Goal 2
 
 ## Dependencies
+
 - Package dependencies with install commands
 - External services required
 
 ## Architecture
+
 - File structure
 - Component relationships
 - Data flow
 
 ## Database Schema (if applicable)
+
 Prisma schema additions
 
 ## Implementation Steps
 
 ### Phase 1: Description
+
 1. Step 1
 2. Step 2
 
 ### Phase 2: Description
+
 1. Step 1
 2. Step 2
 
 ## Code Examples
+
 Key implementation patterns and examples
 
 ## Environment Variables
+
 New env vars needed
 
 ## Testing
+
 How to test the implementation
 
 ## Security Considerations
+
 Security implications and mitigations
 
 ## Future Enhancements
+
 - [ ] Enhancement 1
 - [ ] Enhancement 2
 ```
@@ -110,6 +125,7 @@ Security implications and mitigations
 ### Updating a Plan
 
 When a plan needs updates:
+
 1. Read the existing plan
 2. Add new sections or modify existing ones
 3. Mark completed phases
@@ -123,26 +139,32 @@ When a plan needs updates:
 # Guide Title
 
 ## Prerequisites
+
 - Required knowledge
 - Required setup
 
 ## Steps
 
 ### Step 1: Description
+
 Detailed instructions...
 
 ### Step 2: Description
+
 Detailed instructions...
 
 ## Troubleshooting
 
 ### Common Issue 1
+
 Solution...
 
 ### Common Issue 2
+
 Solution...
 
 ## Related Resources
+
 - Link to relevant docs
 - Link to related guides
 ```
@@ -155,20 +177,23 @@ Solution...
 # Reference Title
 
 ## Overview
+
 What this reference covers.
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| option1 | string | - | Description |
+| Option  | Type   | Default | Description |
+| ------- | ------ | ------- | ----------- |
+| option1 | string | -       | Description |
 
 ## API Reference
 
 ### Endpoint/Method Name
+
 Description and usage examples.
 
 ## Examples
+
 Code examples for common use cases.
 ```
 
@@ -197,16 +222,19 @@ Glob: docs/references/*.md
 ## Integration with Development
 
 ### Before Implementing
+
 1. Check `docs/plans/` for existing plans
 2. Read relevant plan thoroughly
 3. Follow implementation steps
 
 ### During Implementation
+
 1. Update plan with any changes
 2. Mark completed phases
 3. Document deviations from plan
 
 ### After Implementation
+
 1. Create guide if needed
 2. Update references if applicable
 3. Mark plan as completed or archive
@@ -214,6 +242,7 @@ Glob: docs/references/*.md
 ## Checklist
 
 When working with documentation:
+
 - [ ] Check for existing docs before creating new
 - [ ] Follow naming conventions
 - [ ] Use proper markdown structure
